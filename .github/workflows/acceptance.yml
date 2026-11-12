@@ -1,0 +1,53 @@
+name: Acceptance evidence
+on:
+  push:
+    branches: [main, 'work/acceptance-audit']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: acceptance-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Capture source and environment
+        run: |
+          mkdir -p evidence
+          git rev-parse HEAD > evidence/commit.txt
+          git archive HEAD | gzip -9 > evidence/source.tar.gz
+          { rustc -Vv; cargo -V; uname -a; cat /etc/os-release; lscpu; cat /proc/meminfo; } > evidence/environment.txt
+      - name: Validate formatting
+        run: |
+          cargo fmt --all -- --check
+          cargo fmt --manifest-path benchmarks/Cargo.toml -- --check
+      - name: Test all supported feature configurations
+        run: |
+          set -o pipefail
+          cargo test --locked --all-features 2>&1 | tee evidence/test-std.txt
+          cargo test --locked --no-default-features 2>&1 | tee evidence/test-core.txt
+          cargo test --locked --no-default-features --features alloc 2>&1 | tee evidence/test-alloc.txt
+          cargo test --locked --release --all-features 2>&1 | tee evidence/test-release.txt
+      - name: Lint and build comparison harness
+        run: |
+          set -o pipefail
+          cargo clippy --locked --all-targets --all-features -- -D warnings 2>&1 | tee evidence/clippy.txt
+          cargo build --locked --release --manifest-path benchmarks/Cargo.toml 2>&1 | tee evidence/benchmark-build.txt
+          cargo tree --locked --edges normal > evidence/runtime-dependencies.txt
+      - name: Archive evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: acceptance-${{ github.sha }}
+          path: evidence/
+          retention-days: 14
+          if-no-files-found: error
