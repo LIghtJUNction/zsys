@@ -34,7 +34,7 @@ pub struct Process {
     pub cpu_percent: Option<f32>,
     pub sampled_at_ns: u64,
     pub availability: Availability,
-    seen: u64,
+    seen: u32,
 }
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -53,14 +53,23 @@ pub struct ProcessFailure {
     pub reason: Availability,
 }
 
+// Kept separate from the clonable public snapshot: cloning a Process never
+// extends the lifetime of a kernel descriptor.
+struct Entry {
+    process: Process,
+    directory: Option<File>,
+}
+
 pub struct Processes {
     directory: Directory,
     buffer: Buffer,
     pids: Vec<u32>,
-    table: HashMap<u32, Process>,
+    table: HashMap<u32, Entry>,
+    directory_cache_limit: usize,
+    cached_directories: usize,
     failures: Vec<ProcessFailure>,
     mode: ScanMode,
-    generation: u64,
+    generation: u32,
     started: Instant,
     ticks_per_second: u64,
     page_size: u64,
@@ -84,6 +93,8 @@ impl Processes {
             buffer: Buffer::new(4096, 1024 * 1024),
             pids: Vec::new(),
             table: HashMap::new(),
+            directory_cache_limit: 0,
+            cached_directories: 0,
             failures: Vec::new(),
             mode: if cfg!(any(target_arch = "x86_64", target_arch = "aarch64")) {
                 ScanMode::Native
@@ -100,10 +111,10 @@ impl Processes {
         self.mode = mode;
     }
     pub fn iter(&self) -> impl Iterator<Item = &Process> {
-        self.table.values()
+        self.table.values().map(|entry| &entry.process)
     }
     pub fn get(&self, pid: u32) -> Option<&Process> {
-        self.table.get(&pid)
+        self.table.get(&pid).map(|entry| &entry.process)
     }
     pub fn len(&self) -> usize {
         self.table.len()
@@ -119,6 +130,35 @@ impl Processes {
     }
     pub fn page_size(&self) -> u64 {
         self.page_size
+    }
+
+    /// Opts into reusing at most `limit` PID directory descriptors. Disabled by default.
+    ///
+    /// Each sample still opens and reads fresh `statm` and `stat` files, so their
+    /// access checks are not bypassed. Only directory lookup/open/close is saved.
+    /// The first successfully sampled PIDs fill the budget; there is no LRU churn.
+    /// Slots are released on failed samples, observed exit, reconfiguration, or drop.
+    /// Reconfiguration closes all cached descriptors, without discarding snapshots.
+    ///
+    /// Use a stable, genuine procfs mount: Linux pins an open PID directory to its
+    /// original process even after PID reuse. Synthetic roots that rename live PID
+    /// directories should leave caching disabled. Choose a budget below the caller's
+    /// descriptor limit; this collector never changes that process-wide limit.
+    pub fn set_directory_cache_limit(&mut self, limit: usize) {
+        for entry in self.table.values_mut() {
+            entry.directory = None;
+        }
+        self.cached_directories = 0;
+        self.directory_cache_limit = limit;
+    }
+
+    pub fn directory_cache_limit(&self) -> usize {
+        self.directory_cache_limit
+    }
+
+    /// Number of currently retained PID directory descriptors (excluding the proc root).
+    pub fn cached_directory_count(&self) -> usize {
+        self.cached_directories
     }
 
     /// Lists numeric PIDs without reading their records or changing the process table.
@@ -147,9 +187,9 @@ impl Processes {
                 Err(error) => {
                     let reason = classify(&error);
                     if let Some(previous) = self.table.get_mut(&pid) {
-                        previous.seen = self.generation;
-                        previous.availability = reason;
-                        previous.cpu_percent = None;
+                        previous.process.seen = self.generation;
+                        previous.process.availability = reason;
+                        previous.process.cpu_percent = None;
                     }
                     self.failures.push(ProcessFailure { pid, reason });
                     changes.failed += 1;
@@ -157,7 +197,13 @@ impl Processes {
             }
         }
         let old = self.table.len();
-        self.table.retain(|_, p| p.seen == self.generation);
+        self.table.retain(|_, entry| {
+            let keep = entry.process.seen == self.generation;
+            if !keep && entry.directory.is_some() {
+                self.cached_directories -= 1;
+            }
+            keep
+        });
         changes.removed = old - self.table.len();
         Ok(changes)
     }
@@ -168,21 +214,42 @@ impl Processes {
             if classify(&error) == Availability::Vanished {
                 self.table.remove(&pid);
             } else if let Some(previous) = self.table.get_mut(&pid) {
-                previous.availability = classify(&error);
-                previous.cpu_percent = None;
+                previous.process.availability = classify(&error);
+                previous.process.cpu_percent = None;
             }
             return Err(error);
         }
-        Ok(self.table.get(&pid).expect("successful update inserts the record"))
+        Ok(&self.table.get(&pid).expect("successful update inserts the record").process)
     }
 
     fn update(&mut self, pid: u32) -> Result<(bool, bool), LinuxError> {
         let mut path = [0; 64];
         // A procfs directory descriptor remains tied to this process after PID reuse.
         // Both reads must use it so a dying PID cannot combine two processes' data.
-        let directory = open_at(&self.directory.file, pid_path(pid, b"", &mut path))?;
+        let cached = if self.directory_cache_limit == 0 {
+            None
+        } else {
+            self.table.get_mut(&pid).and_then(|entry| entry.directory.take())
+        };
+        let was_cached = cached.is_some();
+        self.cached_directories -= usize::from(was_cached);
+        let mut directory = match cached {
+            Some(directory) => directory,
+            None => open_at(&self.directory.file, pid_path(pid, b"", &mut path))?,
+        };
         let memory_bytes = {
-            let file = open_at(&directory, c"statm")?;
+            let file = match open_at(&directory, c"statm") {
+                // A dead cached process can no longer resolve children. Reopen the
+                // PID once, then sample BOTH files through the new pinned directory.
+                Err(error)
+                    if was_cached && (error.kind() == io::ErrorKind::NotFound || error.raw_os_error() == Some(3)) =>
+                {
+                    drop(directory);
+                    directory = open_at(&self.directory.file, pid_path(pid, b"", &mut path))?;
+                    open_at(&directory, c"statm")?
+                }
+                result => result?,
+            };
             let mut values = fields(self.buffer.read(&file)?);
             let _virtual_pages = number(values.next().ok_or(crate::parse::ParseError::MissingField)?)?;
             number(values.next().ok_or(crate::parse::ParseError::MissingField)?)?
@@ -198,20 +265,28 @@ impl Processes {
         let mut added = false;
         let entry = self.table.entry(pid).or_insert_with(|| {
             added = true;
-            Process {
-                id: raw.id,
-                parent_pid: raw.parent_pid,
-                name: Vec::with_capacity(raw.name.len()),
-                state: raw.state,
-                threads: raw.threads,
-                counters: raw.counters,
-                memory_bytes,
-                cpu_percent: None,
-                sampled_at_ns: now,
-                availability: Availability::Fresh,
-                seen: self.generation,
+            Entry {
+                directory: None,
+                process: Process {
+                    id: raw.id,
+                    parent_pid: raw.parent_pid,
+                    name: Vec::with_capacity(raw.name.len()),
+                    state: raw.state,
+                    threads: raw.threads,
+                    counters: raw.counters,
+                    memory_bytes,
+                    cpu_percent: None,
+                    sampled_at_ns: now,
+                    availability: Availability::Fresh,
+                    seen: self.generation,
+                },
             }
         });
+        if self.cached_directories < self.directory_cache_limit {
+            entry.directory = Some(directory);
+            self.cached_directories += 1;
+        }
+        let entry = &mut entry.process;
         let reused = !added && entry.id != raw.id;
         entry.cpu_percent = if added || reused || entry.availability != Availability::Fresh {
             None
@@ -296,6 +371,26 @@ fn classify(error: &LinuxError) -> Availability {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn private_generation_wrap_preserves_live_and_removes_absent_entries() {
+        for limit in [0, 1] {
+            let mut processes = Processes::new().unwrap();
+            processes.set_directory_cache_limit(limit);
+            processes.generation = u32::MAX;
+            let pid = std::process::id();
+            processes.refresh_pid(pid).unwrap();
+            let phantom = processes.get(pid).unwrap().clone();
+            // Deliberately absent PID, inserted without a directory to exercise retain.
+            processes.table.insert(u32::MAX, Entry { process: phantom, directory: None });
+            let changes = processes.refresh().unwrap();
+            assert_eq!(processes.generation, 0);
+            assert!(processes.get(pid).is_some());
+            assert!(processes.get(u32::MAX).is_none());
+            assert!(changes.removed >= 1);
+            assert!(processes.cached_directory_count() <= limit);
+        }
+    }
 
     #[test]
     fn classifies_exited_and_inaccessible_processes() {
