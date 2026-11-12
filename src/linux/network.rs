@@ -25,6 +25,7 @@ pub struct Network {
     /// Details have their own update time and are never silently treated as fresh counters.
     pub details: Option<InterfaceDetails>,
     seen: u64,
+    baseline_valid: bool,
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InterfaceAddress {
@@ -106,7 +107,8 @@ impl Networks {
         self.sample
     }
     /// Every call reads live counters. Steady-state storage is reused.
-    /// Deltas are invalidated on rollback and when an explicit details refresh detects a changed ifindex.
+    /// Deltas are invalidated on rollback. A details identity change or disappearance
+    /// makes the next counter sample establish a new baseline without a delta.
     /// Name reuse entirely between details refreshes cannot be distinguished from continuous traffic.
     pub fn refresh_counters(&mut self) -> Result<(), LinuxError> {
         let bytes = self.file.read()?;
@@ -136,11 +138,13 @@ impl Networks {
             let name = name(raw);
             let sample = Sample { timestamp_ns: now, sequence };
             if let Some(old) = self.table.get_mut(name) {
-                old.delta = raw.counters.delta_since(old.counters);
-                old.interval_ns = now.checked_sub(old.sample.timestamp_ns).filter(|n| *n != 0);
+                old.delta = old.baseline_valid.then(|| raw.counters.delta_since(old.counters)).flatten();
+                old.interval_ns =
+                    old.baseline_valid.then(|| now.checked_sub(old.sample.timestamp_ns).filter(|n| *n != 0)).flatten();
                 old.counters = raw.counters;
                 old.sample = sample;
                 old.seen = sequence;
+                old.baseline_valid = true;
             } else {
                 self.table.insert(
                     name.to_vec(),
@@ -152,6 +156,7 @@ impl Networks {
                         sample,
                         details: None,
                         seen: sequence,
+                        baseline_valid: true,
                     },
                 );
             }
@@ -164,18 +169,24 @@ impl Networks {
     pub fn refresh_details(&mut self) -> io::Result<()> {
         let now = self.started.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
         let details = interface_details(now)?;
+        self.apply_details(&details);
+        Ok(())
+    }
+    fn apply_details(&mut self, details: &[InterfaceDetails]) {
         for network in self.table.values_mut() {
             if let Some(value) = details.iter().find(|d| d.name == network.name) {
                 if network.details.as_ref().is_none_or(|old| old.index != value.index) {
                     network.delta = None;
                     network.interval_ns = None;
+                    network.baseline_valid = false;
                 }
                 network.details = Some(value.clone());
-            } else {
-                network.details = None;
+            } else if network.details.take().is_some() {
+                network.delta = None;
+                network.interval_ns = None;
+                network.baseline_valid = false;
             }
         }
-        Ok(())
     }
     pub fn refresh(&mut self) -> Result<(), LinuxError> {
         self.refresh_counters()?;
@@ -478,6 +489,73 @@ fn append_ipv6(bytes: &[u8], result: &mut [InterfaceDetails]) -> io::Result<()> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn independent_details_refresh_invalidates_the_next_counter_baseline() {
+        struct Fixture(std::path::PathBuf);
+        impl Drop for Fixture {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_dir_all(&self.0);
+            }
+        }
+        let root = Fixture(std::env::temp_dir().join(format!("zsys-network-identity-{}", std::process::id())));
+        std::fs::create_dir_all(root.0.join("net")).unwrap();
+        let write = |value| {
+            std::fs::write(
+                root.0.join("net/dev"),
+                format!(
+                    "Inter-| Receive | Transmit\n face |bytes packets\neth0: {value} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\n"
+                ),
+            )
+            .unwrap();
+        };
+        let details = |index| InterfaceDetails {
+            name: b"eth0".to_vec(),
+            index,
+            flags: 1,
+            addresses: Vec::new(),
+            mac_address: None,
+            mtu: None,
+            link_speed_bits_per_second: None,
+            address_source: AddressSource::Getifaddrs,
+            sampled_at_ns: 0,
+        };
+        let mut networks = Networks::with_proc_root(&root.0);
+        write(100);
+        networks.refresh_counters().unwrap();
+        networks.apply_details(&[details(1)]);
+        write(200);
+        networks.refresh_counters().unwrap();
+        assert!(networks.get(b"eth0").unwrap().delta.is_none());
+        write(300);
+        networks.refresh_counters().unwrap();
+        assert_eq!(networks.get(b"eth0").unwrap().delta.unwrap().received_bytes, 100);
+
+        // Reuse with larger counters must not look like continuous traffic.
+        networks.apply_details(&[details(2)]);
+        write(1400);
+        networks.refresh_counters().unwrap();
+        let network = networks.get(b"eth0").unwrap();
+        assert!(network.delta.is_none());
+        assert!(network.interval_ns.is_none());
+        write(1500);
+        networks.refresh_counters().unwrap();
+        assert_eq!(networks.get(b"eth0").unwrap().delta.unwrap().received_bytes, 100);
+
+        networks.apply_details(&[]);
+        write(2400);
+        networks.refresh_counters().unwrap();
+        assert!(networks.get(b"eth0").unwrap().delta.is_none());
+        write(2500);
+        networks.refresh_counters().unwrap();
+        assert_eq!(networks.get(b"eth0").unwrap().delta.unwrap().received_bytes, 100);
+
+        // Even a returning index must establish a fresh baseline after the gap.
+        networks.apply_details(&[details(2)]);
+        write(3400);
+        networks.refresh_counters().unwrap();
+        assert!(networks.get(b"eth0").unwrap().delta.is_none());
+    }
     #[test]
     fn native_network_abi_layouts() {
         assert_eq!(std::mem::size_of::<Address4>(), 16);
