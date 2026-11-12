@@ -1,0 +1,2392 @@
+{
+  "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71",
+  "workflow": {
+    "run_id": 43198501217,
+    "job_id": 131115642856,
+    "url": "https://github.com/LIghtJUNction/zsys/actions/runs/43198501217",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-12T10:14:13Z",
+    "completed_at": "2026-11-12T10:31:30Z"
+  },
+  "artifact": {
+    "id": 13935995311,
+    "url": "https://github.com/LIghtJUNction/zsys/actions/runs/43198501217/artifacts/13935995311",
+    "file": "github-89e6c6c.zip",
+    "size_bytes": 523591,
+    "sha256": "690cc53c9577c1f745c993b312f7e3a3010408d592c92990c67b32b7db1499d0",
+    "members": 343
+  },
+  "validation": {
+    "raw_files_checked": 165,
+    "raw_samples_checked": 80300,
+    "sha256_and_row_counts_verified": true,
+    "clean_source_and_same_binary_all_groups": true,
+    "failed_repeat_count": 1
+  },
+  "environment": {
+    "cpu_models": [
+      "AMD EPYC 7763 64-Core Processor"
+    ],
+    "logical_cpu_count": 4,
+    "ram_kib": 16367528,
+    "ram_bytes": 16760348672,
+    "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+    "uname": {
+      "system": "Linux",
+      "node": "runnervm7aw5e",
+      "release": "7.0.0-1017-azure",
+      "version": "#17~24.04.1-Ubuntu SMP PREEMPT Thu Sep 24 18:46:57 UTC 2026",
+      "machine": "x86_64",
+      "processor": "x86_64"
+    },
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
+    "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+    "cpu_affinity": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "profile": "release; thin LTO; codegen-units=1",
+    "rustflags": "",
+    "sysinfo": "0.40.3",
+    "sysinfo_default_features": false,
+    "sysinfo_features": [
+      "system",
+      "network",
+      "disk"
+    ],
+    "binary_sha256": "27f9e5cba5cec7c8d3fcf45b060b2686b4a432c1ac41928db590c36d36def967",
+    "initial_visible_processes_before_child": 167
+  },
+  "method": "All successful-repeat raw samples pooled without outlier removal; nearest-rank P95/P99; inverse mean throughput excludes 210ms pacing sleeps. Failed repeats are preserved and disable headline ratios for that case.",
+  "caveats": [
+    "GitHub workflow success does not mean every benchmark repeat succeeded: one zsys cold_basic repeat rejected a partial scan and remains a recorded failure.",
+    "Network and full metadata parity passed. Full has exactly 163 observed PIDs in both implementations and the same three mounts.",
+    "The directory scaling/100 contains actual 164-PID samples because the runner already exceeded the requested 100-PID target; it is not a 100-PID result.",
+    "Scaling 500 and 1000 have exactly matched counts. Scaling 5000 and 10000 ran successfully, but background process churn caused unequal count ranges, so no cross-library ratio is claimed at those scales.",
+    "Main basic has different process-count ranges and no ratio is claimed. cpu_hot and basic_hot have mismatched CPU freshness and no ratio is claimed.",
+    "Tiny nonzero allocations in zsys process/full results reflect observed changes during a real runner workload; only stable collector paths can be called allocation-free.",
+    "Requested Rust allocation bytes exclude allocator metadata and allocations made directly by native C libraries. VmHWM includes the executable, harness, allocator, and all process memory.",
+    "Cold cases measure collector construction, first refresh, and destruction with OS caches warm; they are not machine cold boot or page-cache eviction tests.",
+    "A shared hosted runner is not dedicated controlled hardware. These descriptive distributions do not establish universal latency or statistical confidence intervals."
+  ],
+  "groups": [
+    {
+      "group": "main",
+      "environment_archive_path": "benchmark-results/environment.json",
+      "requested_visible_processes": 0,
+      "visible_before_child": 167,
+      "spawned": 0,
+      "spawn_error": null,
+      "process_scope_verified": true,
+      "process_scope_validation": "verified_process_count=168\nprocess_scope_verified=true\n",
+      "network_scope_verified": true,
+      "network_scope_validation": "network_scope_verified=true\n",
+      "mount_paths": {
+        "disk": [
+          [
+            "/",
+            "/boot",
+            "/boot/efi"
+          ]
+        ],
+        "full": [
+          [
+            "/",
+            "/boot",
+            "/boot/efi"
+          ]
+        ]
+      },
+      "comparisons": [
+        {
+          "case": "memory",
+          "comparable": true,
+          "median_speedup": 1.563825448613377,
+          "mean_speedup": 1.5852340901213366,
+          "p99_speedup": 2.0394880770072192
+        },
+        {
+          "case": "cpu",
+          "comparable": true,
+          "median_speedup": 1.5021084337349397,
+          "mean_speedup": 1.5330430188358763,
+          "p99_speedup": 1.7644601993542046
+        },
+        {
+          "case": "cpu_hot",
+          "comparable": false,
+          "reason": "Different refresh scope/freshness, failed/unperformed parity gate, or unequal observed process counts; no ratio claimed"
+        },
+        {
+          "case": "network",
+          "comparable": true,
+          "median_speedup": 1.2974717329327266,
+          "mean_speedup": 1.2839567015427575,
+          "p99_speedup": 1.2216513324107872
+        },
+        {
+          "case": "disk",
+          "comparable": true,
+          "median_speedup": 1.0465187923598276,
+          "mean_speedup": 1.0504438784114027,
+          "p99_speedup": 1.0915070060051473
+        },
+        {
+          "case": "process_single",
+          "comparable": true,
+          "median_speedup": 2.6027610475739325,
+          "mean_speedup": 2.573026297853356,
+          "p99_speedup": 2.093744178248072
+        },
+        {
+          "case": "process_all",
+          "comparable": true,
+          "median_speedup": 2.0663960469952243,
+          "mean_speedup": 2.0629296877852807,
+          "p99_speedup": 2.023387450425179
+        },
+        {
+          "case": "basic",
+          "comparable": false,
+          "reason": "Different refresh scope/freshness, failed/unperformed parity gate, or unequal observed process counts; no ratio claimed"
+        },
+        {
+          "case": "basic_hot",
+          "comparable": false,
+          "reason": "Different refresh scope/freshness, failed/unperformed parity gate, or unequal observed process counts; no ratio claimed"
+        },
+        {
+          "case": "cold_process_single",
+          "comparable": true,
+          "median_speedup": 8.13785019341226,
+          "mean_speedup": 7.880833914245524,
+          "p99_speedup": 4.5971030759774445
+        },
+        {
+          "case": "cold_process_all",
+          "comparable": true,
+          "median_speedup": 2.1572078043649294,
+          "mean_speedup": 2.1601220086217285,
+          "p99_speedup": 2.1787347425667134
+        },
+        {
+          "case": "cold_basic",
+          "comparable": false,
+          "reason": "At least one requested repeat failed; successful-repeat distributions are descriptive only and no ratio is claimed"
+        },
+        {
+          "case": "full",
+          "comparable": true,
+          "median_speedup": 1.7507088512776192,
+          "mean_speedup": 1.7264550854644365,
+          "p99_speedup": 1.8136408319334354
+        }
+      ],
+      "failed_runs": [
+        {
+          "case": "cold_basic",
+          "implementation": "zsys",
+          "repeat": 0,
+          "scope": "matched_core",
+          "raw_samples_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "status": "failed",
+          "exit_code": 101,
+          "reason": "thread 'main' (2748) panicked at src/main.rs:116:5:\npartial process scan is not comparable\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+        }
+      ],
+      "notes": [
+        "A partial process scan was rejected and its entire repeat failed; preserve it as failure evidence rather than suppressing it"
+      ]
+    },
+    {
+      "group": "scaling/100",
+      "environment_archive_path": "benchmark-results/scaling/100/environment.json",
+      "requested_visible_processes": 100,
+      "visible_before_child": 163,
+      "spawned": 0,
+      "spawn_error": null,
+      "process_scope_verified": true,
+      "process_scope_validation": "verified_process_count=164\nprocess_scope_verified=true\n",
+      "network_scope_verified": null,
+      "network_scope_validation": null,
+      "mount_paths": {},
+      "comparisons": [
+        {
+          "case": "process_all",
+          "comparable": true,
+          "median_speedup": 2.0460408066821216,
+          "mean_speedup": 2.0304104188013774,
+          "p99_speedup": 1.6489145187792948
+        }
+      ],
+      "failed_runs": [],
+      "notes": [
+        "Existing runner process count exceeded the requested target; label this group by actual observed counts, not its directory name"
+      ]
+    },
+    {
+      "group": "scaling/500",
+      "environment_archive_path": "benchmark-results/scaling/500/environment.json",
+      "requested_visible_processes": 500,
+      "visible_before_child": 499,
+      "spawned": 336,
+      "spawn_error": null,
+      "process_scope_verified": true,
+      "process_scope_validation": "verified_process_count=500\nprocess_scope_verified=true\n",
+      "network_scope_verified": null,
+      "network_scope_validation": null,
+      "mount_paths": {},
+      "comparisons": [
+        {
+          "case": "process_all",
+          "comparable": true,
+          "median_speedup": 2.119252270531302,
+          "mean_speedup": 2.113627693421385,
+          "p99_speedup": 1.965009868211932
+        }
+      ],
+      "failed_runs": [],
+      "notes": []
+    },
+    {
+      "group": "scaling/1000",
+      "environment_archive_path": "benchmark-results/scaling/1000/environment.json",
+      "requested_visible_processes": 1000,
+      "visible_before_child": 999,
+      "spawned": 836,
+      "spawn_error": null,
+      "process_scope_verified": true,
+      "process_scope_validation": "verified_process_count=1000\nprocess_scope_verified=true\n",
+      "network_scope_verified": null,
+      "network_scope_validation": null,
+      "mount_paths": {},
+      "comparisons": [
+        {
+          "case": "process_all",
+          "comparable": true,
+          "median_speedup": 2.142467827459312,
+          "mean_speedup": 2.126665985728885,
+          "p99_speedup": 1.7228566587911152
+        }
+      ],
+      "failed_runs": [],
+      "notes": []
+    },
+    {
+      "group": "scaling/5000",
+      "environment_archive_path": "benchmark-results/scaling/5000/environment.json",
+      "requested_visible_processes": 5000,
+      "visible_before_child": 4999,
+      "spawned": 4836,
+      "spawn_error": null,
+      "process_scope_verified": true,
+      "process_scope_validation": "verified_process_count=5000\nprocess_scope_verified=true\n",
+      "network_scope_verified": null,
+      "network_scope_validation": null,
+      "mount_paths": {},
+      "comparisons": [
+        {
+          "case": "process_all",
+          "comparable": false,
+          "reason": "Different refresh scope/freshness, failed/unperformed parity gate, or unequal observed process counts; no ratio claimed"
+        }
+      ],
+      "failed_runs": [],
+      "notes": []
+    },
+    {
+      "group": "scaling/10000",
+      "environment_archive_path": "benchmark-results/scaling/10000/environment.json",
+      "requested_visible_processes": 10000,
+      "visible_before_child": 9999,
+      "spawned": 9837,
+      "spawn_error": null,
+      "process_scope_verified": true,
+      "process_scope_validation": "verified_process_count=10000\nprocess_scope_verified=true\n",
+      "network_scope_verified": null,
+      "network_scope_validation": null,
+      "mount_paths": {},
+      "comparisons": [
+        {
+          "case": "process_all",
+          "comparable": false,
+          "reason": "Different refresh scope/freshness, failed/unperformed parity gate, or unequal observed process counts; no ratio claimed"
+        }
+      ],
+      "failed_runs": [],
+      "notes": []
+    }
+  ],
+  "results": [
+    {
+      "case": "memory",
+      "implementation": "zsys",
+      "scope": "matched",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 10015.046,
+      "median_ns": 9808.0,
+      "p95_ns": 10049,
+      "p99_ns": 18284,
+      "max_ns": 321892,
+      "operations_per_second": 99849.76604201319,
+      "allocations_per_op": 0,
+      "allocated_bytes_per_op": 0,
+      "peak_extra_live_bytes": 0,
+      "retained_heap_before_bytes_range": [
+        8212,
+        8212
+      ],
+      "retained_heap_after_bytes_range": [
+        8212,
+        8212
+      ],
+      "process_peak_rss_kib_range": [
+        2516,
+        2584
+      ],
+      "observed_processes_range": [
+        0,
+        0
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "memory",
+      "implementation": "sysinfo",
+      "scope": "matched",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 15876.192333333332,
+      "median_ns": 15338.0,
+      "p95_ns": 16080,
+      "p99_ns": 37290,
+      "max_ns": 89958,
+      "operations_per_second": 62987.395151444485,
+      "allocations_per_op": 1,
+      "allocated_bytes_per_op": 16635,
+      "peak_extra_live_bytes": 16635,
+      "retained_heap_before_bytes_range": [
+        1056,
+        1056
+      ],
+      "retained_heap_after_bytes_range": [
+        1056,
+        1056
+      ],
+      "process_peak_rss_kib_range": [
+        2472,
+        2572
+      ],
+      "observed_processes_range": [
+        0,
+        0
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "cpu",
+      "implementation": "zsys",
+      "scope": "matched",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 21665.393333333333,
+      "median_ns": 21580.0,
+      "p95_ns": 24185,
+      "p99_ns": 28492,
+      "max_ns": 32460,
+      "operations_per_second": 46156.55873929822,
+      "allocations_per_op": 0,
+      "allocated_bytes_per_op": 0,
+      "peak_extra_live_bytes": 0,
+      "retained_heap_before_bytes_range": [
+        8974,
+        8974
+      ],
+      "retained_heap_after_bytes_range": [
+        8974,
+        8974
+      ],
+      "process_peak_rss_kib_range": [
+        2524,
+        2592
+      ],
+      "observed_processes_range": [
+        0,
+        0
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "cpu",
+      "implementation": "sysinfo",
+      "scope": "matched",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 33213.98,
+      "median_ns": 32415.5,
+      "p95_ns": 39623,
+      "p99_ns": 50273,
+      "max_ns": 53269,
+      "operations_per_second": 30107.804003013185,
+      "allocations_per_op": 7,
+      "allocated_bytes_per_op": 9304.71,
+      "peak_extra_live_bytes": 9128,
+      "retained_heap_before_bytes_range": [
+        1244,
+        1244
+      ],
+      "retained_heap_after_bytes_range": [
+        1244,
+        1244
+      ],
+      "process_peak_rss_kib_range": [
+        2460,
+        2460
+      ],
+      "observed_processes_range": [
+        0,
+        0
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "cpu_hot",
+      "implementation": "zsys",
+      "scope": "different_freshness",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 10975.197333333334,
+      "median_ns": 10469.0,
+      "p95_ns": 15730,
+      "p99_ns": 19246,
+      "max_ns": 51545,
+      "operations_per_second": 91114.53485786983,
+      "allocations_per_op": 0,
+      "allocated_bytes_per_op": 0,
+      "peak_extra_live_bytes": 0,
+      "retained_heap_before_bytes_range": [
+        8974,
+        8974
+      ],
+      "retained_heap_after_bytes_range": [
+        8974,
+        8974
+      ],
+      "process_peak_rss_kib_range": [
+        2628,
+        2648
+      ],
+      "observed_processes_range": [
+        0,
+        0
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "cpu_hot",
+      "implementation": "sysinfo",
+      "scope": "different_freshness",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 86.25933333333333,
+      "median_ns": 70.0,
+      "p95_ns": 81,
+      "p99_ns": 91,
+      "max_ns": 25126,
+      "operations_per_second": 11592948.395922374,
+      "allocations_per_op": 0,
+      "allocated_bytes_per_op": 0,
+      "peak_extra_live_bytes": 0,
+      "retained_heap_before_bytes_range": [
+        1244,
+        1244
+      ],
+      "retained_heap_after_bytes_range": [
+        1244,
+        1244
+      ],
+      "process_peak_rss_kib_range": [
+        2520,
+        2584
+      ],
+      "observed_processes_range": [
+        0,
+        0
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "network",
+      "implementation": "zsys",
+      "scope": "matched",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 926838.196,
+      "median_ns": 917941.0,
+      "p95_ns": 1014850,
+      "p99_ns": 1057219,
+      "max_ns": 1186459,
+      "operations_per_second": 1078.9369755322427,
+      "allocations_per_op": 35,
+      "allocated_bytes_per_op": 17943,
+      "peak_extra_live_bytes": 5065,
+      "retained_heap_before_bytes_range": [
+        12793,
+        12793
+      ],
+      "retained_heap_after_bytes_range": [
+        12793,
+        12793
+      ],
+      "process_peak_rss_kib_range": [
+        2616,
+        2660
+      ],
+      "observed_processes_range": [
+        0,
+        0
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "network",
+      "implementation": "sysinfo",
+      "scope": "matched",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 1190020.113,
+      "median_ns": 1191002.5,
+      "p95_ns": 1255847,
+      "p99_ns": 1291553,
+      "max_ns": 4427135,
+      "operations_per_second": 840.3219316008318,
+      "allocations_per_op": 134,
+      "allocated_bytes_per_op": 9129,
+      "peak_extra_live_bytes": 4322,
+      "retained_heap_before_bytes_range": [
+        1671,
+        1671
+      ],
+      "retained_heap_after_bytes_range": [
+        1671,
+        1671
+      ],
+      "process_peak_rss_kib_range": [
+        2536,
+        2600
+      ],
+      "observed_processes_range": [
+        0,
+        0
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "network_counters",
+      "implementation": "zsys",
+      "scope": "zsys_only",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 9617.922333333334,
+      "median_ns": 9377.0,
+      "p95_ns": 9497,
+      "p99_ns": 14928,
+      "max_ns": 39132,
+      "operations_per_second": 103972.55928489337,
+      "allocations_per_op": 0,
+      "allocated_bytes_per_op": 0,
+      "peak_extra_live_bytes": 0,
+      "retained_heap_before_bytes_range": [
+        12570,
+        12570
+      ],
+      "retained_heap_after_bytes_range": [
+        12570,
+        12570
+      ],
+      "process_peak_rss_kib_range": [
+        2588,
+        2652
+      ],
+      "observed_processes_range": [
+        0,
+        0
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "disk",
+      "implementation": "zsys",
+      "scope": "matched_storage",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 3328.6893333333333,
+      "median_ns": 3246.0,
+      "p95_ns": 3307,
+      "p99_ns": 3497,
+      "max_ns": 28413,
+      "operations_per_second": 300418.5431142668,
+      "allocations_per_op": 0,
+      "allocated_bytes_per_op": 0,
+      "peak_extra_live_bytes": 0,
+      "retained_heap_before_bytes_range": [
+        378,
+        378
+      ],
+      "retained_heap_after_bytes_range": [
+        378,
+        378
+      ],
+      "process_peak_rss_kib_range": [
+        2564,
+        2580
+      ],
+      "observed_processes_range": [
+        0,
+        0
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "disk",
+      "implementation": "sysinfo",
+      "scope": "matched_storage",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 3496.6013333333335,
+      "median_ns": 3397.0,
+      "p95_ns": 3467,
+      "p99_ns": 3817,
+      "max_ns": 41456,
+      "operations_per_second": 285991.9975625855,
+      "allocations_per_op": 6,
+      "allocated_bytes_per_op": 51,
+      "peak_extra_live_bytes": 18,
+      "retained_heap_before_bytes_range": [
+        792,
+        792
+      ],
+      "retained_heap_after_bytes_range": [
+        792,
+        792
+      ],
+      "process_peak_rss_kib_range": [
+        2504,
+        2584
+      ],
+      "observed_processes_range": [
+        0,
+        0
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "disk_io",
+      "implementation": "zsys",
+      "scope": "zsys_only",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 19822.85,
+      "median_ns": 19396.0,
+      "p95_ns": 19877,
+      "p99_ns": 38721,
+      "max_ns": 55012,
+      "operations_per_second": 50446.83282171837,
+      "allocations_per_op": 0,
+      "allocated_bytes_per_op": 0,
+      "peak_extra_live_bytes": 0,
+      "retained_heap_before_bytes_range": [
+        15986,
+        15986
+      ],
+      "retained_heap_after_bytes_range": [
+        15986,
+        15986
+      ],
+      "process_peak_rss_kib_range": [
+        2596,
+        2656
+      ],
+      "observed_processes_range": [
+        0,
+        0
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "process_single",
+      "implementation": "zsys",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 15246.605666666666,
+      "median_ns": 14777.0,
+      "p95_ns": 19706,
+      "p99_ns": 26839,
+      "max_ns": 61413,
+      "operations_per_second": 65588.36910082084,
+      "allocations_per_op": 0,
+      "allocated_bytes_per_op": 0,
+      "peak_extra_live_bytes": 0,
+      "retained_heap_before_bytes_range": [
+        4648,
+        4648
+      ],
+      "retained_heap_after_bytes_range": [
+        4648,
+        4648
+      ],
+      "process_peak_rss_kib_range": [
+        2576,
+        2640
+      ],
+      "observed_processes_range": [
+        1,
+        1
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "process_single",
+      "implementation": "sysinfo",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 39229.91733333333,
+      "median_ns": 38461.0,
+      "p95_ns": 41627,
+      "p99_ns": 56194,
+      "max_ns": 76902,
+      "operations_per_second": 25490.749610892206,
+      "allocations_per_op": 13,
+      "allocated_bytes_per_op": 33354,
+      "peak_extra_live_bytes": 33251,
+      "retained_heap_before_bytes_range": [
+        2921,
+        2921
+      ],
+      "retained_heap_after_bytes_range": [
+        2921,
+        2921
+      ],
+      "process_peak_rss_kib_range": [
+        2600,
+        2644
+      ],
+      "observed_processes_range": [
+        1,
+        1
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "process_all",
+      "implementation": "zsys",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 2382474.297,
+      "median_ns": 2373688.0,
+      "p95_ns": 2430765,
+      "p99_ns": 2494714,
+      "max_ns": 3199729,
+      "operations_per_second": 419.7317055043134,
+      "allocations_per_op": 0.0013333333333333333,
+      "allocated_bytes_per_op": 0.048,
+      "peak_extra_live_bytes": 36,
+      "retained_heap_before_bytes_range": [
+        49120,
+        49179
+      ],
+      "retained_heap_after_bytes_range": [
+        49156,
+        49179
+      ],
+      "process_peak_rss_kib_range": [
+        2652,
+        2716
+      ],
+      "observed_processes_range": [
+        168,
+        168
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "process_all",
+      "implementation": "sysinfo",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 4914876.957666666,
+      "median_ns": 4904979.5,
+      "p95_ns": 4966894,
+      "p99_ns": 5047773,
+      "max_ns": 6143492,
+      "operations_per_second": 203.46389311742794,
+      "allocations_per_op": 1112.048,
+      "allocated_bytes_per_op": 109485.52,
+      "peak_extra_live_bytes": 33712,
+      "retained_heap_before_bytes_range": [
+        110135,
+        110148
+      ],
+      "retained_heap_after_bytes_range": [
+        110135,
+        110148
+      ],
+      "process_peak_rss_kib_range": [
+        2756,
+        2824
+      ],
+      "observed_processes_range": [
+        168,
+        168
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "enumerate",
+      "implementation": "zsys",
+      "scope": "zsys_only",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 77468.75333333333,
+      "median_ns": 76412.0,
+      "p95_ns": 85839,
+      "p99_ns": 94946,
+      "max_ns": 108330,
+      "operations_per_second": 12908.430263453318,
+      "allocations_per_op": 0,
+      "allocated_bytes_per_op": 0,
+      "peak_extra_live_bytes": 0,
+      "retained_heap_before_bytes_range": [
+        13317,
+        13317
+      ],
+      "retained_heap_after_bytes_range": [
+        13317,
+        13317
+      ],
+      "process_peak_rss_kib_range": [
+        2512,
+        2528
+      ],
+      "observed_processes_range": [
+        168,
+        168
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "enumerate_std",
+      "implementation": "zsys",
+      "scope": "zsys_only",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 92771.74066666666,
+      "median_ns": 91299.0,
+      "p95_ns": 101738,
+      "p99_ns": 113239,
+      "max_ns": 143546,
+      "operations_per_second": 10779.144519806394,
+      "allocations_per_op": 462,
+      "allocated_bytes_per_op": 2069,
+      "peak_extra_live_bytes": 88,
+      "retained_heap_before_bytes_range": [
+        5125,
+        5125
+      ],
+      "retained_heap_after_bytes_range": [
+        5125,
+        5125
+      ],
+      "process_peak_rss_kib_range": [
+        2468,
+        2528
+      ],
+      "observed_processes_range": [
+        168,
+        168
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "basic",
+      "implementation": "zsys",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 2676347.8633333333,
+      "median_ns": 2668216.5,
+      "p95_ns": 2870280,
+      "p99_ns": 2996624,
+      "max_ns": 3989073,
+      "operations_per_second": 373.64350639924726,
+      "allocations_per_op": 0.07333333333333333,
+      "allocated_bytes_per_op": 2.5566666666666666,
+      "peak_extra_live_bytes": 77,
+      "retained_heap_before_bytes_range": [
+        66243,
+        66283
+      ],
+      "retained_heap_after_bytes_range": [
+        66375,
+        66402
+      ],
+      "process_peak_rss_kib_range": [
+        2604,
+        2656
+      ],
+      "observed_processes_range": [
+        168,
+        172
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "basic",
+      "implementation": "sysinfo",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 5222051.556666667,
+      "median_ns": 5240248.5,
+      "p95_ns": 5423929,
+      "p99_ns": 5641326,
+      "max_ns": 6705764,
+      "operations_per_second": 191.49561990121728,
+      "allocations_per_op": 1111.8266666666666,
+      "allocated_bytes_per_op": 134623.31666666668,
+      "peak_extra_live_bytes": 34906,
+      "retained_heap_before_bytes_range": [
+        110109,
+        110126
+      ],
+      "retained_heap_after_bytes_range": [
+        109911,
+        110126
+      ],
+      "process_peak_rss_kib_range": [
+        2776,
+        2836
+      ],
+      "observed_processes_range": [
+        160,
+        168
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "basic_hot",
+      "implementation": "zsys",
+      "scope": "different_freshness",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 2325968.201,
+      "median_ns": 2319280.0,
+      "p95_ns": 2358032,
+      "p99_ns": 2411870,
+      "max_ns": 3483999,
+      "operations_per_second": 429.9284915288487,
+      "allocations_per_op": 0.004,
+      "allocated_bytes_per_op": 0.164,
+      "peak_extra_live_bytes": 36,
+      "retained_heap_before_bytes_range": [
+        66091,
+        66124
+      ],
+      "retained_heap_after_bytes_range": [
+        66178,
+        66196
+      ],
+      "process_peak_rss_kib_range": [
+        2664,
+        2672
+      ],
+      "observed_processes_range": [
+        162,
+        162
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "basic_hot",
+      "implementation": "sysinfo",
+      "scope": "different_freshness",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 4789756.164666667,
+      "median_ns": 4788704.0,
+      "p95_ns": 4850994,
+      "p99_ns": 4971247,
+      "max_ns": 6886250,
+      "operations_per_second": 208.77889512974676,
+      "allocations_per_op": 1080.0473333333334,
+      "allocated_bytes_per_op": 123509.80033333333,
+      "peak_extra_live_bytes": 33712,
+      "retained_heap_before_bytes_range": [
+        109915,
+        109915
+      ],
+      "retained_heap_after_bytes_range": [
+        109915,
+        109915
+      ],
+      "process_peak_rss_kib_range": [
+        2796,
+        2844
+      ],
+      "observed_processes_range": [
+        162,
+        162
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "cold_process_single",
+      "implementation": "zsys",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 18025.290666666668,
+      "median_ns": 17062.0,
+      "p95_ns": 22091,
+      "p99_ns": 37419,
+      "max_ns": 52857,
+      "operations_per_second": 55477.60746234476,
+      "allocations_per_op": 4,
+      "allocated_bytes_per_op": 4648,
+      "peak_extra_live_bytes": 4648,
+      "retained_heap_before_bytes_range": [
+        0,
+        0
+      ],
+      "retained_heap_after_bytes_range": [
+        0,
+        0
+      ],
+      "process_peak_rss_kib_range": [
+        2576,
+        2644
+      ],
+      "observed_processes_range": [
+        1,
+        1
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "cold_process_single",
+      "implementation": "sysinfo",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 142054.322,
+      "median_ns": 138848.0,
+      "p95_ns": 155438,
+      "p99_ns": 172019,
+      "max_ns": 235346,
+      "operations_per_second": 7039.56054219878,
+      "allocations_per_op": 55,
+      "allocated_bytes_per_op": 68322,
+      "peak_extra_live_bytes": 35921,
+      "retained_heap_before_bytes_range": [
+        0,
+        0
+      ],
+      "retained_heap_after_bytes_range": [
+        0,
+        0
+      ],
+      "process_peak_rss_kib_range": [
+        2612,
+        2656
+      ],
+      "observed_processes_range": [
+        1,
+        1
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "cold_process_all",
+      "implementation": "zsys",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 2316144.515,
+      "median_ns": 2310117.5,
+      "p95_ns": 2350299,
+      "p99_ns": 2450363,
+      "max_ns": 3057568,
+      "operations_per_second": 431.7519884980061,
+      "allocations_per_op": 180.51166666666666,
+      "allocated_bytes_per_op": 86623.61866666666,
+      "peak_extra_live_bytes": 64789,
+      "retained_heap_before_bytes_range": [
+        0,
+        0
+      ],
+      "retained_heap_after_bytes_range": [
+        0,
+        0
+      ],
+      "process_peak_rss_kib_range": [
+        2708,
+        2780
+      ],
+      "observed_processes_range": [
+        162,
+        163
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "cold_process_all",
+      "implementation": "sysinfo",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 5003154.742,
+      "median_ns": 4983403.5,
+      "p95_ns": 5082412,
+      "p99_ns": 5338691,
+      "max_ns": 6576032,
+      "operations_per_second": 199.8738898889728,
+      "allocations_per_op": 1458,
+      "allocated_bytes_per_op": 553585.071,
+      "peak_extra_live_bytes": 280935,
+      "retained_heap_before_bytes_range": [
+        0,
+        0
+      ],
+      "retained_heap_after_bytes_range": [
+        0,
+        0
+      ],
+      "process_peak_rss_kib_range": [
+        2872,
+        2964
+      ],
+      "observed_processes_range": [
+        162,
+        163
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "cold_basic",
+      "implementation": "sysinfo",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 3000,
+      "mean_ns": 5046039.970333333,
+      "median_ns": 5034102.5,
+      "p95_ns": 5111138,
+      "p99_ns": 5205373,
+      "max_ns": 6505814,
+      "operations_per_second": 198.1752038983436,
+      "allocations_per_op": 1465,
+      "allocated_bytes_per_op": 570577.0806666666,
+      "peak_extra_live_bytes": 281152,
+      "retained_heap_before_bytes_range": [
+        0,
+        0
+      ],
+      "retained_heap_after_bytes_range": [
+        0,
+        0
+      ],
+      "process_peak_rss_kib_range": [
+        2864,
+        2972
+      ],
+      "observed_processes_range": [
+        163,
+        163
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "cold_basic",
+      "implementation": "zsys",
+      "scope": "matched_core",
+      "repeats": 2,
+      "samples": 2000,
+      "mean_ns": 2368677.2265,
+      "median_ns": 2358532.5,
+      "p95_ns": 2413183,
+      "p99_ns": 2511396,
+      "max_ns": 3564177,
+      "operations_per_second": 422.17655863463426,
+      "allocations_per_op": 190,
+      "allocated_bytes_per_op": 103476.9545,
+      "peak_extra_live_bytes": 81596,
+      "retained_heap_before_bytes_range": [
+        0,
+        0
+      ],
+      "retained_heap_after_bytes_range": [
+        0,
+        0
+      ],
+      "process_peak_rss_kib_range": [
+        2728,
+        2732
+      ],
+      "observed_processes_range": [
+        163,
+        163
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "full",
+      "implementation": "zsys",
+      "scope": "matched_full",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 3714052.06,
+      "median_ns": 3645863.5,
+      "p95_ns": 3942419,
+      "p99_ns": 4224713,
+      "max_ns": 16893841,
+      "operations_per_second": 269.247706775548,
+      "allocations_per_op": 35.03666666666667,
+      "allocated_bytes_per_op": 17944.44,
+      "peak_extra_live_bytes": 5142,
+      "retained_heap_before_bytes_range": [
+        79315,
+        79361
+      ],
+      "retained_heap_after_bytes_range": [
+        79373,
+        79454
+      ],
+      "process_peak_rss_kib_range": [
+        2664,
+        2688
+      ],
+      "observed_processes_range": [
+        163,
+        163
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "full",
+      "implementation": "sysinfo",
+      "scope": "matched_full",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 6412144.066666666,
+      "median_ns": 6382845.5,
+      "p95_ns": 6660035,
+      "p99_ns": 7662112,
+      "max_ns": 8103787,
+      "operations_per_second": 155.95407551718452,
+      "allocations_per_op": 1234,
+      "allocated_bytes_per_op": 142284.36,
+      "peak_extra_live_bytes": 33712,
+      "retained_heap_before_bytes_range": [
+        112423,
+        112439
+      ],
+      "retained_heap_after_bytes_range": [
+        112423,
+        112439
+      ],
+      "process_peak_rss_kib_range": [
+        2776,
+        2836
+      ],
+      "observed_processes_range": [
+        163,
+        163
+      ],
+      "group": "main",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "enumerate",
+      "implementation": "zsys",
+      "scope": "zsys_only",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 76954.54,
+      "median_ns": 75230.0,
+      "p95_ns": 92451,
+      "p99_ns": 99083,
+      "max_ns": 111247,
+      "operations_per_second": 12994.684913976487,
+      "allocations_per_op": 0,
+      "allocated_bytes_per_op": 0,
+      "peak_extra_live_bytes": 0,
+      "retained_heap_before_bytes_range": [
+        13317,
+        13317
+      ],
+      "retained_heap_after_bytes_range": [
+        13317,
+        13317
+      ],
+      "process_peak_rss_kib_range": [
+        2416,
+        2472
+      ],
+      "observed_processes_range": [
+        164,
+        164
+      ],
+      "group": "scaling/100",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "enumerate_std",
+      "implementation": "zsys",
+      "scope": "zsys_only",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 92169.64,
+      "median_ns": 89936.5,
+      "p95_ns": 111747,
+      "p99_ns": 117007,
+      "max_ns": 121966,
+      "operations_per_second": 10849.559572978695,
+      "allocations_per_op": 454,
+      "allocated_bytes_per_op": 2065,
+      "peak_extra_live_bytes": 88,
+      "retained_heap_before_bytes_range": [
+        5125,
+        5125
+      ],
+      "retained_heap_after_bytes_range": [
+        5125,
+        5125
+      ],
+      "process_peak_rss_kib_range": [
+        2412,
+        2476
+      ],
+      "observed_processes_range": [
+        164,
+        164
+      ],
+      "group": "scaling/100",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "process_all",
+      "implementation": "zsys",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 2342819.9766666666,
+      "median_ns": 2319203.5,
+      "p95_ns": 2441855,
+      "p99_ns": 2938236,
+      "max_ns": 3333628,
+      "operations_per_second": 426.83603945651294,
+      "allocations_per_op": 0.006666666666666667,
+      "allocated_bytes_per_op": 0.34,
+      "peak_extra_live_bytes": 33,
+      "retained_heap_before_bytes_range": [
+        48981,
+        49060
+      ],
+      "retained_heap_after_bytes_range": [
+        49014,
+        49060
+      ],
+      "process_peak_rss_kib_range": [
+        2580,
+        2652
+      ],
+      "observed_processes_range": [
+        164,
+        164
+      ],
+      "group": "scaling/100",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "process_all",
+      "implementation": "sysinfo",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 4756886.09,
+      "median_ns": 4745185.0,
+      "p95_ns": 4799064,
+      "p99_ns": 4844900,
+      "max_ns": 5880158,
+      "operations_per_second": 210.22155693452817,
+      "allocations_per_op": 1093.04,
+      "allocated_bytes_per_op": 107786.64,
+      "peak_extra_live_bytes": 33712,
+      "retained_heap_before_bytes_range": [
+        110000,
+        110024
+      ],
+      "retained_heap_after_bytes_range": [
+        110000,
+        110024
+      ],
+      "process_peak_rss_kib_range": [
+        2760,
+        2760
+      ],
+      "observed_processes_range": [
+        164,
+        164
+      ],
+      "group": "scaling/100",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "process_all_std",
+      "implementation": "zsys",
+      "scope": "zsys_only",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 2315349.6233333335,
+      "median_ns": 2309194.0,
+      "p95_ns": 2352610,
+      "p99_ns": 2373769,
+      "max_ns": 2382365,
+      "operations_per_second": 431.9002149491067,
+      "allocations_per_op": 454.01666666666665,
+      "allocated_bytes_per_op": 2065.7,
+      "peak_extra_live_bytes": 88,
+      "retained_heap_before_bytes_range": [
+        40783,
+        40816
+      ],
+      "retained_heap_after_bytes_range": [
+        40816,
+        40882
+      ],
+      "process_peak_rss_kib_range": [
+        2572,
+        2652
+      ],
+      "observed_processes_range": [
+        164,
+        164
+      ],
+      "group": "scaling/100",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "enumerate",
+      "implementation": "zsys",
+      "scope": "zsys_only",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 208625.54333333333,
+      "median_ns": 200161.0,
+      "p95_ns": 263839,
+      "p99_ns": 277394,
+      "max_ns": 289677,
+      "operations_per_second": 4793.276911457774,
+      "allocations_per_op": 0,
+      "allocated_bytes_per_op": 0,
+      "peak_extra_live_bytes": 0,
+      "retained_heap_before_bytes_range": [
+        38917,
+        38917
+      ],
+      "retained_heap_after_bytes_range": [
+        38917,
+        38917
+      ],
+      "process_peak_rss_kib_range": [
+        2436,
+        2492
+      ],
+      "observed_processes_range": [
+        500,
+        500
+      ],
+      "group": "scaling/500",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "enumerate_std",
+      "implementation": "zsys",
+      "scope": "zsys_only",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 235864.37666666668,
+      "median_ns": 231920.0,
+      "p95_ns": 252978,
+      "p99_ns": 262807,
+      "max_ns": 268728,
+      "operations_per_second": 4239.724599926514,
+      "allocations_per_op": 1126,
+      "allocated_bytes_per_op": 5089,
+      "peak_extra_live_bytes": 88,
+      "retained_heap_before_bytes_range": [
+        6149,
+        6149
+      ],
+      "retained_heap_after_bytes_range": [
+        6149,
+        6149
+      ],
+      "process_peak_rss_kib_range": [
+        2444,
+        2492
+      ],
+      "observed_processes_range": [
+        500,
+        500
+      ],
+      "group": "scaling/500",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "process_all",
+      "implementation": "zsys",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 7365332.383333334,
+      "median_ns": 7330057.5,
+      "p95_ns": 7448440,
+      "p99_ns": 8305456,
+      "max_ns": 9146006,
+      "operations_per_second": 135.77119781625242,
+      "allocations_per_op": 0.01,
+      "allocated_bytes_per_op": 0.36,
+      "peak_extra_live_bytes": 18,
+      "retained_heap_before_bytes_range": [
+        175366,
+        175408
+      ],
+      "retained_heap_after_bytes_range": [
+        175384,
+        175408
+      ],
+      "process_peak_rss_kib_range": [
+        2792,
+        2856
+      ],
+      "observed_processes_range": [
+        500,
+        500
+      ],
+      "group": "scaling/500",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "process_all",
+      "implementation": "sysinfo",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 15567570.496666666,
+      "median_ns": 15534241.0,
+      "p95_ns": 15693652,
+      "p99_ns": 16320303,
+      "max_ns": 17536857,
+      "operations_per_second": 64.2360990248363,
+      "allocations_per_op": 3445.16,
+      "allocated_bytes_per_op": 266536.56,
+      "peak_extra_live_bytes": 33712,
+      "retained_heap_before_bytes_range": [
+        429158,
+        429176
+      ],
+      "retained_heap_after_bytes_range": [
+        429158,
+        429176
+      ],
+      "process_peak_rss_kib_range": [
+        3444,
+        3524
+      ],
+      "observed_processes_range": [
+        500,
+        500
+      ],
+      "group": "scaling/500",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "process_all_std",
+      "implementation": "zsys",
+      "scope": "zsys_only",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 7425185.416666667,
+      "median_ns": 7417900.5,
+      "p95_ns": 7486607,
+      "p99_ns": 7772888,
+      "max_ns": 9217078,
+      "operations_per_second": 134.6767715396557,
+      "allocations_per_op": 1126.01,
+      "allocated_bytes_per_op": 5089.36,
+      "peak_extra_live_bytes": 88,
+      "retained_heap_before_bytes_range": [
+        142590,
+        142626
+      ],
+      "retained_heap_after_bytes_range": [
+        142596,
+        142644
+      ],
+      "process_peak_rss_kib_range": [
+        2772,
+        2836
+      ],
+      "observed_processes_range": [
+        500,
+        500
+      ],
+      "group": "scaling/500",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "enumerate",
+      "implementation": "zsys",
+      "scope": "zsys_only",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 393355.70666666667,
+      "median_ns": 392238.0,
+      "p95_ns": 410431,
+      "p99_ns": 420981,
+      "max_ns": 433073,
+      "operations_per_second": 2542.2282759645063,
+      "allocations_per_op": 0,
+      "allocated_bytes_per_op": 0,
+      "peak_extra_live_bytes": 0,
+      "retained_heap_before_bytes_range": [
+        40965,
+        40965
+      ],
+      "retained_heap_after_bytes_range": [
+        40965,
+        40965
+      ],
+      "process_peak_rss_kib_range": [
+        2492,
+        2492
+      ],
+      "observed_processes_range": [
+        1000,
+        1000
+      ],
+      "group": "scaling/1000",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "enumerate_std",
+      "implementation": "zsys",
+      "scope": "zsys_only",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 447937.38666666666,
+      "median_ns": 444009.0,
+      "p95_ns": 464381,
+      "p99_ns": 481312,
+      "max_ns": 492533,
+      "operations_per_second": 2232.454869287684,
+      "allocations_per_op": 2126,
+      "allocated_bytes_per_op": 9589,
+      "peak_extra_live_bytes": 88,
+      "retained_heap_before_bytes_range": [
+        8197,
+        8197
+      ],
+      "retained_heap_after_bytes_range": [
+        8197,
+        8197
+      ],
+      "process_peak_rss_kib_range": [
+        2460,
+        2564
+      ],
+      "observed_processes_range": [
+        1000,
+        1000
+      ],
+      "group": "scaling/1000",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "process_all",
+      "implementation": "zsys",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 15024802.323333334,
+      "median_ns": 14915009.5,
+      "p95_ns": 15110837,
+      "p99_ns": 19442448,
+      "max_ns": 21210436,
+      "operations_per_second": 66.55661608585773,
+      "allocations_per_op": 0.023333333333333334,
+      "allocated_bytes_per_op": 0.9066666666666666,
+      "peak_extra_live_bytes": 36,
+      "retained_heap_before_bytes_range": [
+        312002,
+        312058
+      ],
+      "retained_heap_after_bytes_range": [
+        312058,
+        312084
+      ],
+      "process_peak_rss_kib_range": [
+        2964,
+        3056
+      ],
+      "observed_processes_range": [
+        1000,
+        1000
+      ],
+      "group": "scaling/1000",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "process_all",
+      "implementation": "sysinfo",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 31952736.043333333,
+      "median_ns": 31954928.0,
+      "p95_ns": 32450912,
+      "p99_ns": 33496551,
+      "max_ns": 34123233,
+      "operations_per_second": 31.296224481178395,
+      "allocations_per_op": 6945.28,
+      "allocated_bytes_per_op": 502530.48,
+      "peak_extra_live_bytes": 33712,
+      "retained_heap_before_bytes_range": [
+        855479,
+        855498
+      ],
+      "retained_heap_after_bytes_range": [
+        855479,
+        855498
+      ],
+      "process_peak_rss_kib_range": [
+        4236,
+        4284
+      ],
+      "observed_processes_range": [
+        1000,
+        1000
+      ],
+      "group": "scaling/1000",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "process_all_std",
+      "implementation": "zsys",
+      "scope": "zsys_only",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 14966012.536666667,
+      "median_ns": 14967517.0,
+      "p95_ns": 15141106,
+      "p99_ns": 15369891,
+      "max_ns": 16401326,
+      "operations_per_second": 66.81806510251172,
+      "allocations_per_op": 2126.0033333333336,
+      "allocated_bytes_per_op": 9589.12,
+      "peak_extra_live_bytes": 88,
+      "retained_heap_before_bytes_range": [
+        279266,
+        279284
+      ],
+      "retained_heap_after_bytes_range": [
+        279266,
+        279296
+      ],
+      "process_peak_rss_kib_range": [
+        2948,
+        3064
+      ],
+      "observed_processes_range": [
+        1000,
+        1000
+      ],
+      "group": "scaling/1000",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "enumerate",
+      "implementation": "zsys",
+      "scope": "zsys_only",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 1912633.2566666666,
+      "median_ns": 1907336.5,
+      "p95_ns": 1948493,
+      "p99_ns": 1973960,
+      "max_ns": 1999658,
+      "operations_per_second": 522.8393872763658,
+      "allocations_per_op": 0,
+      "allocated_bytes_per_op": 0,
+      "peak_extra_live_bytes": 0,
+      "retained_heap_before_bytes_range": [
+        69637,
+        69637
+      ],
+      "retained_heap_after_bytes_range": [
+        69637,
+        69637
+      ],
+      "process_peak_rss_kib_range": [
+        2468,
+        2536
+      ],
+      "observed_processes_range": [
+        5000,
+        5000
+      ],
+      "group": "scaling/5000",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "enumerate_std",
+      "implementation": "zsys",
+      "scope": "zsys_only",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 2167526.0366666666,
+      "median_ns": 2161923.5,
+      "p95_ns": 2194369,
+      "p99_ns": 2212482,
+      "max_ns": 2820760,
+      "operations_per_second": 461.3554730525183,
+      "allocations_per_op": 10126,
+      "allocated_bytes_per_op": 45589,
+      "peak_extra_live_bytes": 88,
+      "retained_heap_before_bytes_range": [
+        36869,
+        36869
+      ],
+      "retained_heap_after_bytes_range": [
+        36869,
+        36869
+      ],
+      "process_peak_rss_kib_range": [
+        2476,
+        2604
+      ],
+      "observed_processes_range": [
+        5000,
+        5000
+      ],
+      "group": "scaling/5000",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "process_all",
+      "implementation": "zsys",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 81341841.84666666,
+      "median_ns": 80875972.5,
+      "p95_ns": 83718263,
+      "p99_ns": 102957769,
+      "max_ns": 117107646,
+      "operations_per_second": 12.293795877957235,
+      "allocations_per_op": 0.013333333333333334,
+      "allocated_bytes_per_op": 0.3566666666666667,
+      "peak_extra_live_bytes": 18,
+      "retained_heap_before_bytes_range": [
+        1153200,
+        1153312
+      ],
+      "retained_heap_after_bytes_range": [
+        1153242,
+        1153330
+      ],
+      "process_peak_rss_kib_range": [
+        4180,
+        4252
+      ],
+      "observed_processes_range": [
+        4997,
+        5000
+      ],
+      "group": "scaling/5000",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "process_all",
+      "implementation": "sysinfo",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 174598159.79333332,
+      "median_ns": 171013421.5,
+      "p95_ns": 200098170,
+      "p99_ns": 223495735,
+      "max_ns": 241787268,
+      "operations_per_second": 5.727437226049063,
+      "allocations_per_op": 34943.36666666667,
+      "allocated_bytes_per_op": 2389362.8666666667,
+      "peak_extra_live_bytes": 33712,
+      "retained_heap_before_bytes_range": [
+        3428326,
+        3428394
+      ],
+      "retained_heap_after_bytes_range": [
+        3428294,
+        3428394
+      ],
+      "process_peak_rss_kib_range": [
+        9684,
+        9788
+      ],
+      "observed_processes_range": [
+        4998,
+        5000
+      ],
+      "group": "scaling/5000",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "process_all_std",
+      "implementation": "zsys",
+      "scope": "zsys_only",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 83937846.56,
+      "median_ns": 81678266.0,
+      "p95_ns": 102074617,
+      "p99_ns": 115862404,
+      "max_ns": 117001734,
+      "operations_per_second": 11.91357702136408,
+      "allocations_per_op": 10122.68,
+      "allocated_bytes_per_op": 45592.44,
+      "peak_extra_live_bytes": 88,
+      "retained_heap_before_bytes_range": [
+        1120473,
+        1120522
+      ],
+      "retained_heap_after_bytes_range": [
+        1120499,
+        1120553
+      ],
+      "process_peak_rss_kib_range": [
+        4164,
+        4224
+      ],
+      "observed_processes_range": [
+        4998,
+        4999
+      ],
+      "group": "scaling/5000",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "enumerate",
+      "implementation": "zsys",
+      "scope": "zsys_only",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 4362836.333333333,
+      "median_ns": 4039340.0,
+      "p95_ns": 5341174,
+      "p99_ns": 5368915,
+      "max_ns": 5444364,
+      "operations_per_second": 229.20868985153314,
+      "allocations_per_op": 0,
+      "allocated_bytes_per_op": 0,
+      "peak_extra_live_bytes": 0,
+      "retained_heap_before_bytes_range": [
+        102405,
+        102405
+      ],
+      "retained_heap_after_bytes_range": [
+        102405,
+        102405
+      ],
+      "process_peak_rss_kib_range": [
+        2492,
+        2624
+      ],
+      "observed_processes_range": [
+        10000,
+        10000
+      ],
+      "group": "scaling/10000",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "enumerate_std",
+      "implementation": "zsys",
+      "scope": "zsys_only",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 4548273.956666667,
+      "median_ns": 4352571.5,
+      "p95_ns": 6006420,
+      "p99_ns": 6058717,
+      "max_ns": 6168129,
+      "operations_per_second": 219.86362508666446,
+      "allocations_per_op": 20126,
+      "allocated_bytes_per_op": 108229,
+      "peak_extra_live_bytes": 88,
+      "retained_heap_before_bytes_range": [
+        69637,
+        69637
+      ],
+      "retained_heap_after_bytes_range": [
+        69637,
+        69637
+      ],
+      "process_peak_rss_kib_range": [
+        2544,
+        2624
+      ],
+      "observed_processes_range": [
+        10000,
+        10000
+      ],
+      "group": "scaling/10000",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "process_all",
+      "implementation": "zsys",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 176177413.24666667,
+      "median_ns": 168027108.5,
+      "p95_ns": 215469352,
+      "p99_ns": 228713588,
+      "max_ns": 235486658,
+      "operations_per_second": 5.676096507330915,
+      "allocations_per_op": 0.006666666666666667,
+      "allocated_bytes_per_op": 0.20666666666666667,
+      "peak_extra_live_bytes": 18,
+      "retained_heap_before_bytes_range": [
+        2267790,
+        2267826
+      ],
+      "retained_heap_after_bytes_range": [
+        2267808,
+        2267833
+      ],
+      "process_peak_rss_kib_range": [
+        5716,
+        5808
+      ],
+      "observed_processes_range": [
+        10000,
+        10000
+      ],
+      "group": "scaling/10000",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "process_all",
+      "implementation": "sysinfo",
+      "scope": "matched_core",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 359715015.2133333,
+      "median_ns": 346490234.5,
+      "p95_ns": 435479237,
+      "p99_ns": 456324882,
+      "max_ns": 489370283,
+      "operations_per_second": 2.7799784765919155,
+      "allocations_per_op": 69951.84333333334,
+      "allocated_bytes_per_op": 4775108.763333334,
+      "peak_extra_live_bytes": 34919,
+      "retained_heap_before_bytes_range": [
+        6862703,
+        6862720
+      ],
+      "retained_heap_after_bytes_range": [
+        6862655,
+        6862720
+      ],
+      "process_peak_rss_kib_range": [
+        16692,
+        16824
+      ],
+      "observed_processes_range": [
+        9997,
+        10000
+      ],
+      "group": "scaling/10000",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    },
+    {
+      "case": "process_all_std",
+      "implementation": "zsys",
+      "scope": "zsys_only",
+      "repeats": 3,
+      "samples": 300,
+      "mean_ns": 175065130.55,
+      "median_ns": 168641917.0,
+      "p95_ns": 214072415,
+      "p99_ns": 223598749,
+      "max_ns": 230953481,
+      "operations_per_second": 5.712159793662576,
+      "allocations_per_op": 20125.083333333332,
+      "allocated_bytes_per_op": 108230.76666666666,
+      "peak_extra_live_bytes": 88,
+      "retained_heap_before_bytes_range": [
+        2235061,
+        2235064
+      ],
+      "retained_heap_after_bytes_range": [
+        2235064,
+        2235085
+      ],
+      "process_peak_rss_kib_range": [
+        5700,
+        5804
+      ],
+      "observed_processes_range": [
+        9999,
+        10000
+      ],
+      "group": "scaling/10000",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71"
+    }
+  ],
+  "targets": [
+    {
+      "group": "main",
+      "case": "memory",
+      "target_ns": 3000,
+      "median_ns": 9808.0,
+      "mean_ns": 10015.046,
+      "p99_ns": 18284,
+      "median_met": false,
+      "mean_met": false,
+      "p99_met": false,
+      "observed_processes_range": [
+        0,
+        0
+      ]
+    },
+    {
+      "group": "main",
+      "case": "cpu",
+      "target_ns": 5000,
+      "median_ns": 21580.0,
+      "mean_ns": 21665.393333333333,
+      "p99_ns": 28492,
+      "median_met": false,
+      "mean_met": false,
+      "p99_met": false,
+      "observed_processes_range": [
+        0,
+        0
+      ]
+    },
+    {
+      "group": "main",
+      "case": "network",
+      "target_ns": 30000,
+      "median_ns": 917941.0,
+      "mean_ns": 926838.196,
+      "p99_ns": 1057219,
+      "median_met": false,
+      "mean_met": false,
+      "p99_met": false,
+      "observed_processes_range": [
+        0,
+        0
+      ]
+    },
+    {
+      "group": "main",
+      "case": "disk",
+      "target_ns": 10000,
+      "median_ns": 3246.0,
+      "mean_ns": 3328.6893333333333,
+      "p99_ns": 3497,
+      "median_met": true,
+      "mean_met": true,
+      "p99_met": true,
+      "observed_processes_range": [
+        0,
+        0
+      ]
+    },
+    {
+      "group": "main",
+      "case": "process_single",
+      "target_ns": 20000,
+      "median_ns": 14777.0,
+      "mean_ns": 15246.605666666666,
+      "p99_ns": 26839,
+      "median_met": true,
+      "mean_met": true,
+      "p99_met": false,
+      "observed_processes_range": [
+        1,
+        1
+      ]
+    },
+    {
+      "group": "main",
+      "case": "process_all",
+      "target_ns": 1000000,
+      "median_ns": 2373688.0,
+      "mean_ns": 2382474.297,
+      "p99_ns": 2494714,
+      "median_met": false,
+      "mean_met": false,
+      "p99_met": false,
+      "observed_processes_range": [
+        168,
+        168
+      ]
+    },
+    {
+      "group": "main",
+      "case": "basic",
+      "target_ns": 1000000,
+      "median_ns": 2668216.5,
+      "mean_ns": 2676347.8633333333,
+      "p99_ns": 2996624,
+      "median_met": false,
+      "mean_met": false,
+      "p99_met": false,
+      "observed_processes_range": [
+        168,
+        172
+      ]
+    },
+    {
+      "group": "main",
+      "case": "full",
+      "target_ns": 1000000,
+      "median_ns": 3645863.5,
+      "mean_ns": 3714052.06,
+      "p99_ns": 4224713,
+      "median_met": false,
+      "mean_met": false,
+      "p99_met": false,
+      "observed_processes_range": [
+        163,
+        163
+      ]
+    },
+    {
+      "group": "scaling/100",
+      "case": "process_all",
+      "target_ns": 1000000,
+      "median_ns": 2319203.5,
+      "mean_ns": 2342819.9766666666,
+      "p99_ns": 2938236,
+      "median_met": false,
+      "mean_met": false,
+      "p99_met": false,
+      "observed_processes_range": [
+        164,
+        164
+      ]
+    },
+    {
+      "group": "scaling/500",
+      "case": "process_all",
+      "target_ns": 1000000,
+      "median_ns": 7330057.5,
+      "mean_ns": 7365332.383333334,
+      "p99_ns": 8305456,
+      "median_met": false,
+      "mean_met": false,
+      "p99_met": false,
+      "observed_processes_range": [
+        500,
+        500
+      ]
+    },
+    {
+      "group": "scaling/1000",
+      "case": "process_all",
+      "target_ns": 1000000,
+      "median_ns": 14915009.5,
+      "mean_ns": 15024802.323333334,
+      "p99_ns": 19442448,
+      "median_met": false,
+      "mean_met": false,
+      "p99_met": false,
+      "observed_processes_range": [
+        1000,
+        1000
+      ]
+    },
+    {
+      "group": "scaling/5000",
+      "case": "process_all",
+      "target_ns": 1000000,
+      "median_ns": 80875972.5,
+      "mean_ns": 81341841.84666666,
+      "p99_ns": 102957769,
+      "median_met": false,
+      "mean_met": false,
+      "p99_met": false,
+      "observed_processes_range": [
+        4997,
+        5000
+      ]
+    },
+    {
+      "group": "scaling/10000",
+      "case": "process_all",
+      "target_ns": 1000000,
+      "median_ns": 168027108.5,
+      "mean_ns": 176177413.24666667,
+      "p99_ns": 228713588,
+      "median_met": false,
+      "mean_met": false,
+      "p99_met": false,
+      "observed_processes_range": [
+        10000,
+        10000
+      ]
+    }
+  ]
+}
