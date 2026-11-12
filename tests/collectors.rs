@@ -92,3 +92,36 @@ fn live_cpu_memory_and_network_addresses() {
     assert!(lo.details.as_ref().unwrap().is_loopback());
     assert!(lo.details.as_ref().unwrap().addresses.iter().any(|a| a.address.is_loopback()));
 }
+
+#[test]
+fn duplicate_interfaces_cannot_partially_replace_a_snapshot() {
+    let f = Fixture::new();
+    fs::write(f.0.join("net/dev"), net(10, 20)).unwrap();
+    let mut n = Networks::with_roots(&f.0, &f.0);
+    n.refresh_counters().unwrap();
+    let before = n.sample();
+    let duplicate = net(30, 40) + " eth0: 90 1 0 0 0 0 0 0 80 1 0 0 0 0 0 0\n";
+    fs::write(f.0.join("net/dev"), duplicate).unwrap();
+    assert!(n.refresh_counters().is_err());
+    assert_eq!(n.sample(), before);
+    assert_eq!(n.get(b"eth0").unwrap().counters.received_bytes, 10);
+}
+
+#[test]
+fn link_properties_preserve_unknown_and_negative_values() {
+    let f = Fixture::new();
+    let path = f.0.join("class/net/lo");
+    fs::create_dir_all(&path).unwrap();
+    fs::write(path.join("mtu"), "1234\n").unwrap();
+    fs::write(path.join("speed"), "-1\n").unwrap();
+    fs::write(path.join("operstate"), "up\n").unwrap();
+    let mut n = Networks::with_roots("/proc", &f.0);
+    n.refresh().unwrap();
+    let lo = n.get(b"lo").unwrap().details.as_ref().unwrap();
+    assert_eq!(lo.mtu, Some(1234));
+    assert_eq!(lo.link_speed_bps, None);
+    assert_eq!(lo.operational_state, Some(zsys::linux::OperationalState::Up));
+    fs::write(path.join("speed"), "1000\n").unwrap();
+    n.refresh_details().unwrap();
+    assert_eq!(n.get(b"lo").unwrap().details.as_ref().unwrap().link_speed_bps, Some(1_000_000_000));
+}
