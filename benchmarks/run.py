@@ -63,6 +63,9 @@ def main():
     shutil.copyfile(binary, frozen_binary)
     frozen_binary.chmod(0o700)
     binary = frozen_binary
+    mode = subprocess.check_output([str(binary), 'zsys', 'measurement_mode', '1'], text=True).strip()
+    if mode not in ('latency', 'allocation-counting'):
+        p.error('binary does not identify a supported measurement mode')
     def command(*cmd):
         return subprocess.check_output(cmd, text=True, cwd=root).strip()
     def read(path):
@@ -109,7 +112,8 @@ def main():
             'memory_max': read('/sys/fs/cgroup/memory.max'),
             'rlimit_nproc': resource.getrlimit(resource.RLIMIT_NPROC),
             'cpu_affinity': sorted(os.sched_getaffinity(0)),
-            'allocation_scope': 'Successful Rust global alloc/alloc_zeroed/realloc requested bytes; allocator bookkeeping is included in measured latency; excludes C allocations',
+            'measurement_mode': mode,
+            'allocation_scope': ('Successful Rust global alloc/alloc_zeroed/realloc requested bytes; instrumented timings are not production latency; excludes C allocations' if mode == 'allocation-counting' else 'Not measured: plain System allocator; empty CSV/JSON null allocation fields'),
             'peak_memory_scope': 'VmHWM per fresh child includes executable, loader, allocator and harness; per-op peak_extra_live_bytes counts requested Rust heap; not a heap profiler',
             'retained_heap_scope': 'Requested Rust heap retained by setup/collector after warmup and after measurements; excludes sample array, includes path and metadata setup',
             'cold_scope': 'Collector construction + first refresh + drop; process and kernel filesystem caches are warm',
@@ -151,7 +155,7 @@ def main():
                     prefix = out / f'{case}-{impl}-{repeat}'
                     prefix.with_suffix('.csv.gz').write_bytes(gzip.compress(run.stdout.encode(), mtime=0))
                     prefix.with_suffix('.stderr').write_text(run.stderr)
-                    item = dict(case=case, implementation=impl, repeat=repeat, scope=SCOPES[case][0], raw_samples_sha256=hashlib.sha256(run.stdout.encode()).hexdigest())
+                    item = dict(case=case, implementation=impl, repeat=repeat, scope=SCOPES[case][0], measurement_mode=mode, raw_samples_sha256=hashlib.sha256(run.stdout.encode()).hexdigest())
                     if case.startswith(('process_', 'cold_process_', 'basic', 'cold_basic', 'full')) and process_scope is False: item['scope'] = 'unmatched_process_metadata'
                     if case in ('network', 'full') and network_scope is False: item['scope'] = 'unmatched_network_metadata'
                     if case == 'network': item['scope'] = 'matched' if network_scope else 'unmatched_network_metadata'
@@ -164,9 +168,9 @@ def main():
                         item.update(status='ok', samples=len(ns), mean_ns=statistics.mean(ns), median_ns=statistics.median(ns),
                                     p95_ns=percentile(.95), p99_ns=percentile(.99), max_ns=max(ns),
                                     operations_per_second=1e9/statistics.mean(ns),
-                                    allocations_per_op=statistics.mean(int(r['allocations']) for r in rows),
-                                    allocated_bytes_per_op=statistics.mean(int(r['allocated_bytes']) for r in rows),
-                                    peak_extra_live_bytes=max(int(r['peak_extra_live_bytes']) for r in rows))
+                                    allocations_per_op=statistics.mean(int(r['allocations']) for r in rows) if mode == 'allocation-counting' else None,
+                                    allocated_bytes_per_op=statistics.mean(int(r['allocated_bytes']) for r in rows) if mode == 'allocation-counting' else None,
+                                    peak_extra_live_bytes=max(int(r['peak_extra_live_bytes']) for r in rows) if mode == 'allocation-counting' else None)
                         for line in run.stderr.splitlines():
                             if line.startswith('VmHWM:'): item['process_peak_rss_kib'] = int(line.split()[1])
                             elif '=' in line:

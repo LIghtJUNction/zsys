@@ -1,15 +1,18 @@
 //! Isolated-process benchmarks using only the libraries' public interfaces.
+#[cfg(feature = "allocation-counting")]
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::hint::black_box;
 use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
 use std::time::{Duration, Instant};
 
+#[cfg(feature = "allocation-counting")]
 struct Counting;
 static CALLS: AtomicU64 = AtomicU64::new(0);
 static BYTES: AtomicU64 = AtomicU64::new(0);
 static LIVE: AtomicU64 = AtomicU64::new(0);
 static PEAK: AtomicU64 = AtomicU64::new(0);
 static OBSERVED_PROCESSES: AtomicU64 = AtomicU64::new(0);
+#[cfg(feature = "allocation-counting")]
 fn allocated(size: usize) {
     CALLS.fetch_add(1, Relaxed);
     BYTES.fetch_add(size as u64, Relaxed);
@@ -17,6 +20,7 @@ fn allocated(size: usize) {
     PEAK.fetch_max(now, Relaxed);
 }
 // SAFETY: original pointer/layout arguments are forwarded to System exactly once.
+#[cfg(feature = "allocation-counting")]
 unsafe impl GlobalAlloc for Counting {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let p = unsafe { System.alloc(layout) };
@@ -45,6 +49,7 @@ unsafe impl GlobalAlloc for Counting {
         new
     }
 }
+#[cfg(feature = "allocation-counting")]
 #[global_allocator]
 static ALLOC: Counting = Counting;
 
@@ -94,8 +99,11 @@ fn measure(mut collect: impl FnMut(), config: &Config) {
         .load(Relaxed)
         .saturating_sub(config.initial_heap)
         .saturating_sub((rows.capacity() * std::mem::size_of_val(&rows[0])) as u64);
-    eprintln!("retained_heap_before_bytes={retained_before}");
-    eprintln!("retained_heap_after_bytes={retained_after}");
+    eprintln!("allocation_counting={}", cfg!(feature = "allocation-counting"));
+    if cfg!(feature = "allocation-counting") {
+        eprintln!("retained_heap_before_bytes={retained_before}");
+        eprintln!("retained_heap_after_bytes={retained_after}");
+    }
     eprintln!("warmup={warmup}");
     eprintln!("interval_ns={}", config.interval.as_nanos());
     let status = std::fs::read_to_string("/proc/self/status").unwrap();
@@ -106,7 +114,12 @@ fn measure(mut collect: impl FnMut(), config: &Config) {
         "sample,ns,allocations,allocated_bytes,peak_extra_live_bytes,retained_extra_live_bytes,observed_processes"
     );
     for (i, (ns, calls, bytes, peak, retained, processes)) in rows.into_iter().enumerate() {
-        println!("{i},{ns},{calls},{bytes},{peak},{retained},{processes}");
+        if cfg!(feature = "allocation-counting") {
+            println!("{i},{ns},{calls},{bytes},{peak},{retained},{processes}");
+        } else {
+            // Empty means unmeasured, never zero allocations or zero heap.
+            println!("{i},{ns},,,,,{processes}");
+        }
     }
 }
 fn process_kind() -> sysinfo::ProcessRefreshKind {
@@ -158,6 +171,10 @@ fn main() {
     let case = args.get(2).map(String::as_str).unwrap_or("memory");
     let samples: usize = args.get(3).map(|s| s.parse().unwrap()).unwrap_or(1000);
     assert!((1..=1_000_000).contains(&samples));
+    if case == "measurement_mode" {
+        println!("{}", if cfg!(feature = "allocation-counting") { "allocation-counting" } else { "latency" });
+        return;
+    }
     if case == "validate_process" {
         validate_process().unwrap();
         println!("process_scope_verified=true");

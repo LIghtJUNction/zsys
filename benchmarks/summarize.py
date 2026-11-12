@@ -14,10 +14,12 @@ p.add_argument('directory', type=pathlib.Path)
 p.add_argument('--output', type=pathlib.Path)
 a = p.parse_args()
 environment = json.loads((a.directory / 'environment.json').read_text())
+mode = environment.get('measurement_mode', 'allocation-counting')
 summary = json.loads((a.directory / 'summary.json').read_text())
 groups = defaultdict(list)
 failed = []
 for item in summary:
+    assert item.get('measurement_mode', mode) == mode, 'mixed measurement modes'
     if item.get('status', 'ok') != 'ok':
         failed.append(item)
         continue
@@ -36,13 +38,13 @@ for (case, implementation), runs in groups.items():
         rows += list(csv.DictReader(raw.decode().splitlines()))
     ns = sorted(int(row['ns']) for row in rows)
     def quantile(q): return ns[max(0, math.ceil(q * len(ns)) - 1)]
-    item = dict(case=case, implementation=implementation, scope=runs[0].get('scope', 'unvalidated_legacy'),
+    item = dict(case=case, implementation=implementation, scope=runs[0].get('scope', 'unvalidated_legacy'), measurement_mode=mode,
                 repeats=len(runs), samples=len(ns), mean_ns=statistics.mean(ns), median_ns=statistics.median(ns),
                 p95_ns=quantile(.95), p99_ns=quantile(.99), max_ns=max(ns),
                 operations_per_second=1e9/statistics.mean(ns),
-                allocations_per_op=statistics.mean(int(row['allocations']) for row in rows),
-                allocated_bytes_per_op=statistics.mean(int(row['allocated_bytes']) for row in rows),
-                peak_extra_live_bytes=max(int(row['peak_extra_live_bytes']) for row in rows), raw_hashes=hashes)
+                allocations_per_op=statistics.mean(int(row['allocations']) for row in rows) if mode == 'allocation-counting' else None,
+                allocated_bytes_per_op=statistics.mean(int(row['allocated_bytes']) for row in rows) if mode == 'allocation-counting' else None,
+                peak_extra_live_bytes=max(int(row['peak_extra_live_bytes']) for row in rows) if mode == 'allocation-counting' else None, raw_hashes=hashes)
     for key in ('retained_heap_before_bytes', 'retained_heap_after_bytes', 'process_peak_rss_kib'):
         if all(key in run for run in runs): item[key + '_range'] = [min(run[key] for run in runs), max(run[key] for run in runs)]
     if rows and 'observed_processes' in rows[0]:
@@ -60,7 +62,8 @@ for case in dict.fromkeys(item['case'] for item in results):
         if 'observed_processes_range' in zsys and 'observed_processes_range' in reference:
             eligible = eligible and zsys['observed_processes_range'] == reference['observed_processes_range']
     if case in ('network', 'full'): eligible = eligible and environment.get('network_scope_verified', False)
-    pair = dict(case=case, comparable=eligible)
+    pair = dict(case=case, comparable=eligible, measurement_mode=mode,
+                latency_claim_allowed=eligible and mode == 'latency')
     if eligible:
         pair.update(median_speedup=reference['median_ns'] / zsys['median_ns'],
                     mean_speedup=reference['mean_ns'] / zsys['mean_ns'],

@@ -128,4 +128,9 @@ jobs:
           components: rustfmt, clippy
       - run: cargo fmt --manifest-path benchmarks/Cargo.toml -- --check
       - run: cargo build --locked --release --manifest-path benchmarks/Cargo.toml
-      - run: cargo clippy --locked --manifest-path benchmarks/Cargo.toml -- -D warnings
+      - run: cargo clippy --locked --manifest-path benchmarks/Cargo.toml --all-features -- -D warnings
+      - name: Verify separate latency and allocation executables
+        run: |
+          cp benchmarks/target/release/zsys-benchmarks /tmp/zsys-latency
+          cargo build --locked --release --manifest-path benchmarks/Cargo.toml --features allocation-counting
+          python3 benchmarks/test_modes.py --latency /tmp/zsys-latency --counted benchmarks/target/release/zsys-benchmarks
