@@ -30,6 +30,9 @@ pub fn parse_cpu_stat(input: &[u8]) -> Result<CpuTimes, ParseError> {
 
 pub fn parse_meminfo(input: &[u8]) -> Result<Memory, ParseError> {
     let mut out = Memory::default();
+    let mut has_available = false;
+    let mut reclaimable = 0u64;
+    let mut shared = 0u64;
     for line in input.split(|b| *b == b'\n') {
         let Some((key, rest)) = line.split_once(|b| *b == b':') else { continue };
         let value = fields(rest).next().map(number).transpose()?.unwrap_or(0).saturating_mul(1024);
@@ -90,6 +93,12 @@ mod tests {
         assert_eq!(m.total_bytes, 1_024_000);
         assert_eq!(m.used_bytes(), 614_400);
         assert_eq!(m.swap_used_bytes(), 15_360);
+    }
+
+    #[test]
+    fn derives_available_memory_when_kernel_omits_it() {
+        let m = parse_meminfo(b"MemTotal: 1000 kB\nMemFree: 100 kB\nBuffers: 20 kB\nCached: 200 kB\nSReclaimable: 30 kB\nShmem: 10 kB\n").unwrap();
+        assert_eq!(m.available_bytes, 340 * 1024);
     }
     #[test]
     fn parses_cpu_stat() {
