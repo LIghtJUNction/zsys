@@ -31,6 +31,7 @@ SCOPES = {
     'network_counters': ('zsys_only', 'All /proc/net/dev counters; sysinfo has no counters-only public refresh selector'),
     'disk': ('matched_storage', 'Capacity refresh for exactly the sysinfo-visible fixed mount list; no rediscovery/kind/I/O'),
     'disk_io': ('zsys_only', 'All block device and partition counters; differs from sysinfo mounted disk view'),
+    'full': ('matched_full', 'CPU/RAM/swap/process core + complete network + fixed sysinfo-visible mount capacities; >=210ms interval; excludes disk kind/I/O, mount rediscovery and hardware telemetry'),
     'basic': ('matched_core', 'CPU utilization + RAM/swap + all process core records; >=210 ms interval, sleep excluded; excludes network/disk'),
     'basic_hot': ('different_freshness', 'CPU + RAM/swap + all process core records; sysinfo CPU may remain cached'),
     'cold_process_single': ('matched_core', 'Construct, collect and drop one fresh collector for self PID; warm OS caches'),
@@ -44,7 +45,7 @@ def main():
     p.add_argument('--samples', type=int, default=1000)
     p.add_argument('--paced-samples', type=int, default=100)
     p.add_argument('--repeats', type=int, default=3)
-    p.add_argument('--cases', nargs='+', default=['memory', 'cpu', 'process_single', 'process_all', 'disk', 'network', 'basic', 'cold_basic'])
+    p.add_argument('--cases', nargs='+', default=['memory', 'cpu', 'process_single', 'process_all', 'disk', 'network', 'basic', 'full', 'cold_basic'])
     p.add_argument('--implementations', nargs='+', choices=['zsys', 'sysinfo'], default=['zsys', 'sysinfo'])
     p.add_argument('--binary')
     p.add_argument('--processes', type=int, default=0, help='Target this many visible processes, including the benchmark child; uses controlled sleeping children')
@@ -116,13 +117,13 @@ def main():
             'scopes': {key: SCOPES[key] for key in a.cases},
         }
         process_scope = None
-        if any(case.startswith(('process_', 'cold_process_', 'basic', 'cold_basic')) for case in a.cases):
+        if any(case.startswith(('process_', 'cold_process_', 'basic', 'cold_basic', 'full')) for case in a.cases):
             validation = subprocess.run([str(binary), 'zsys', 'validate_process', '1'], text=True, capture_output=True)
             process_scope = validation.returncode == 0
             metadata['process_scope_verified'] = process_scope
             metadata['process_scope_validation'] = validation.stdout + validation.stderr
         network_scope = None
-        if 'network' in a.cases:
+        if any(case in ('network', 'full') for case in a.cases):
             validation = subprocess.run([str(binary), 'zsys', 'validate_network', '1'], text=True, capture_output=True)
             network_scope = validation.returncode == 0
             metadata['network_scope_verified'] = network_scope
@@ -134,18 +135,28 @@ def main():
                 order = a.implementations if repeat % 2 == 0 else list(reversed(a.implementations))
                 for impl in order:
                     if impl == 'sysinfo' and SCOPES[case][0] == 'zsys_only': continue
-                    n = a.paced_samples if case in ('cpu', 'basic') else a.samples
-                    timeout = 60 + n * (0.3 if case in ('cpu', 'basic') else .02)
-                    run = subprocess.run([str(binary), impl, case, str(n)], text=True,
-                                         capture_output=True, timeout=timeout)
+                    n = a.paced_samples if case in ('cpu', 'basic', 'full') else a.samples
+                    timeout = 60 + n * (0.3 if case in ('cpu', 'basic', 'full') else .02)
+                    invocation = [str(binary), impl, case, str(n)]
+                    try:
+                        if case == 'full' and (network_scope is not True or process_scope is not True):
+                            run = subprocess.CompletedProcess(invocation, 126, '', 'full comparison unavailable: network and process content gates must both pass before timing')
+                        else:
+                            run = subprocess.run(invocation, text=True, capture_output=True, timeout=timeout)
+                    except subprocess.TimeoutExpired as error:
+                        def decoded(value): return value.decode(errors='replace') if isinstance(value, bytes) else (value or '')
+                        run = subprocess.CompletedProcess(invocation, 124, decoded(error.stdout), decoded(error.stderr) + '\nbenchmark timed out')
+                    except OSError as error:
+                        run = subprocess.CompletedProcess(invocation, 125, '', str(error))
                     prefix = out / f'{case}-{impl}-{repeat}'
                     prefix.with_suffix('.csv.gz').write_bytes(gzip.compress(run.stdout.encode(), mtime=0))
                     prefix.with_suffix('.stderr').write_text(run.stderr)
                     item = dict(case=case, implementation=impl, repeat=repeat, scope=SCOPES[case][0], raw_samples_sha256=hashlib.sha256(run.stdout.encode()).hexdigest())
-                    if case.startswith(('process_', 'cold_process_', 'basic', 'cold_basic')) and process_scope is False: item['scope'] = 'unmatched_process_metadata'
+                    if case.startswith(('process_', 'cold_process_', 'basic', 'cold_basic', 'full')) and process_scope is False: item['scope'] = 'unmatched_process_metadata'
+                    if case in ('network', 'full') and network_scope is False: item['scope'] = 'unmatched_network_metadata'
                     if case == 'network': item['scope'] = 'matched' if network_scope else 'unmatched_network_metadata'
                     if run.returncode:
-                        item.update(status='failed', exit_code=run.returncode, reason=run.stderr.strip())
+                        item.update(status='unavailable' if run.returncode == 126 else 'failed', exit_code=run.returncode, reason=run.stderr.strip())
                     else:
                         rows = list(csv.DictReader(run.stdout.splitlines()))
                         ns = sorted(int(x['ns']) for x in rows)

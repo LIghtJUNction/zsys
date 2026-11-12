@@ -173,7 +173,7 @@ fn main() {
         return;
     }
     let cold = case.starts_with("cold_");
-    let interval = if matches!(case, "cpu" | "basic") {
+    let interval = if matches!(case, "cpu" | "basic" | "full") {
         sysinfo::MINIMUM_CPU_UPDATE_INTERVAL + Duration::from_millis(10)
     } else {
         Duration::ZERO
@@ -332,6 +332,8 @@ fn main() {
                 || {
                     c.refresh().unwrap();
                     assert!(!c.is_empty());
+                    assert!(c.failures().is_empty());
+                    OBSERVED_PROCESSES.store(c.len() as u64, Relaxed);
                     for p in c.iter() {
                         black_box((p.id.pid, p.parent_pid, &p.name, p.id.start_time_ticks));
                     }
@@ -349,6 +351,7 @@ fn main() {
                         sysinfo::ProcessRefreshKind::nothing().without_tasks(),
                     );
                     assert!(!c.processes().is_empty());
+                    OBSERVED_PROCESSES.store(c.processes().len() as u64, Relaxed);
                     for p in c.processes().values() {
                         black_box((p.pid(), p.parent(), p.name(), p.start_time()));
                     }
@@ -360,7 +363,9 @@ fn main() {
             let mut c = zsys_processes(case.ends_with("_std"));
             measure(
                 || {
-                    black_box(c.enumerate_pids().unwrap());
+                    let pids = c.enumerate_pids().unwrap();
+                    OBSERVED_PROCESSES.store(pids.len() as u64, Relaxed);
+                    black_box(pids);
                 },
                 &config,
             );
@@ -531,6 +536,87 @@ fn main() {
                     &config,
                 );
             }
+        }
+        ("zsys", "full") => {
+            let mut cpu = zsys::linux::CpuCollector::new();
+            let mut memory = zsys::linux::MemoryCollector::new();
+            let mut processes = zsys_processes(false);
+            let mut networks = zsys::linux::Networks::new();
+            let disks = sysinfo::Disks::new_with_refreshed_list_specifics(sysinfo::DiskRefreshKind::nothing()).unwrap();
+            let mut filesystems: Vec<_> =
+                disks.iter().map(|d| zsys::linux::Filesystem::new(d.mount_point()).unwrap()).collect();
+            assert!(!filesystems.is_empty());
+            eprintln!("mount_count={}", filesystems.len());
+            for d in &filesystems {
+                eprintln!("mount={}", d.path().display());
+            }
+            drop(disks);
+            measure(
+                || {
+                    cpu.refresh().unwrap();
+                    memory.refresh().unwrap();
+                    processes.refresh().unwrap();
+                    networks.refresh().unwrap();
+                    assert!(networks.iter().next().is_some());
+                    for d in &mut filesystems {
+                        black_box(d.refresh().unwrap());
+                    }
+                    for n in networks.iter() {
+                        black_box((&n.name, n.counters, &n.details));
+                    }
+                    black_box((cpu.cores(), memory.snapshot()));
+                    observe_zsys_processes(&processes);
+                },
+                &config,
+            );
+        }
+        ("sysinfo", "full") => {
+            let mut c = sysinfo::System::new().unwrap();
+            let mut networks = sysinfo::Networks::new().unwrap();
+            let mut disks =
+                sysinfo::Disks::new_with_refreshed_list_specifics(sysinfo::DiskRefreshKind::nothing()).unwrap();
+            assert!(!disks.is_empty());
+            eprintln!("mount_count={}", disks.len());
+            for d in &disks {
+                eprintln!("mount={}", d.mount_point().display());
+            }
+            measure(
+                || {
+                    c.refresh_cpu_usage();
+                    c.refresh_memory();
+                    c.refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, true, process_kind());
+                    networks.refresh(true);
+                    assert!(!networks.is_empty());
+                    for d in disks.iter_mut() {
+                        assert!(d.refresh_specifics(sysinfo::DiskRefreshKind::nothing().with_storage()));
+                        black_box((d.total_space(), d.available_space()));
+                    }
+                    for (name, n) in &networks {
+                        black_box((
+                            name,
+                            n.total_received(),
+                            n.total_transmitted(),
+                            n.total_packets_received(),
+                            n.total_packets_transmitted(),
+                            n.ip_networks(),
+                            n.mac_address(),
+                            n.mtu(),
+                        ));
+                    }
+                    black_box((
+                        c.cpus(),
+                        c.total_memory(),
+                        c.available_memory(),
+                        c.free_memory(),
+                        c.used_memory(),
+                        c.total_swap(),
+                        c.free_swap(),
+                        c.used_swap(),
+                    ));
+                    observe_sysinfo_processes(&c);
+                },
+                &config,
+            );
         }
         _ => panic!("unsupported benchmark: {implementation} {case}"),
     }
