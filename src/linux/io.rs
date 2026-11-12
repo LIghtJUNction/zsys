@@ -101,7 +101,7 @@ pub(crate) struct Directory {
 }
 impl Directory {
     pub(crate) fn new(path: &Path) -> io::Result<Self> {
-        Ok(Self { file: File::open(path)?, path: path.to_owned(), entries: vec![0; 32 * 1024] })
+        Ok(Self { file: File::open(path)?, path: path.to_owned(), entries: Vec::new() })
     }
     pub(crate) fn pids(&mut self, out: &mut Vec<u32>, mode: ScanMode) -> io::Result<()> {
         out.clear();
@@ -123,6 +123,11 @@ impl Directory {
     fn native_pids(&mut self, out: &mut Vec<u32>) -> io::Result<()> {
         use std::io::{Seek, SeekFrom};
         self.file.seek(SeekFrom::Start(0))?;
+        // Targeted PID sampling never needs directory storage. Small namespaces use
+        // one page; large scans grow once and retain their bounded buffer for reuse.
+        if self.entries.is_empty() {
+            self.entries.resize(4096, 0);
+        }
         #[cfg(target_arch = "x86_64")]
         const GETDENTS64: c_long = 217;
         #[cfg(target_arch = "aarch64")]
@@ -142,6 +147,9 @@ impl Directory {
                 return Ok(());
             }
             parse_dirents(&self.entries[..n as usize], out)?;
+            if n as usize > self.entries.len() * 3 / 4 && self.entries.len() < 32 * 1024 {
+                self.entries.resize(self.entries.len() * 2, 0);
+            }
         }
     }
     #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]

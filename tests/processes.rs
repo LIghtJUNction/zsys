@@ -195,7 +195,7 @@ fn details_preserve_bytes_and_report_each_requested_field() {
     assert!(matches!(no_details.user_ids, Detail::NotRequested));
     let details = p.details(42, DetailOptions::all()).unwrap();
     assert!(matches!(details.command_line, Detail::Value(v) if v == b"hello\0\0\xffarg\0"));
-    assert!(matches!(details.executable, Detail::Value(v) if v == PathBuf::from("/fixture/executable")));
+    assert!(matches!(details.executable, Detail::Value(v) if v == std::path::Path::new("/fixture/executable")));
     assert!(matches!(details.user_ids, Detail::Value([1, 2, 3, 4])));
     assert!(matches!(details.group_ids, Detail::Value([5, 6, 7, 8])));
     fs::remove_file(f.0.join("42/exe")).unwrap();
@@ -224,7 +224,7 @@ fn permission_loss_retains_explicitly_stale_data() {
     let path = f.0.join("42/stat");
     let mut p = Processes::with_parameters(&f.0, 100, 4096).unwrap();
     p.refresh().unwrap();
-    fs::set_permissions(&path, fs::Permissions::from_mode(0)).unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o0)).unwrap();
     // Privileged runners can bypass mode bits; the exact errno mapping is tested separately.
     if fs::File::open(&path).is_err_and(|e| e.kind() == std::io::ErrorKind::PermissionDenied) {
         assert_eq!(p.refresh().unwrap().failed, 1);

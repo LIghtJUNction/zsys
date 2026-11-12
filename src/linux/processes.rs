@@ -81,8 +81,8 @@ impl Processes {
         Ok(Self {
             directory: Directory::new(root.as_ref())?,
             buffer: Buffer::new(4096, 1024 * 1024),
-            pids: Vec::with_capacity(256),
-            table: HashMap::with_capacity(256),
+            pids: Vec::new(),
+            table: HashMap::new(),
             failures: Vec::new(),
             mode: if cfg!(any(target_arch = "x86_64", target_arch = "aarch64")) {
                 ScanMode::Native
