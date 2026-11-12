@@ -36,6 +36,7 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo test --all-features
       - run: cargo check --no-default-features
+      - run: cargo check --all-features
       - run: cargo package --locked
       - name: Publish to crates.io
         env:
@@ -48,7 +49,7 @@ jobs:
           VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add Cargo.toml
+          git add Cargo.toml Cargo.lock
           git commit -m "chore(release): v$VERSION"
           git tag "v$VERSION"
           git push origin HEAD:main --tags
