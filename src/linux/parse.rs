@@ -89,4 +89,18 @@ mod tests {
         assert_eq!(c.user, 10);
         assert_eq!(c.steal, 8);
     }
+
+    #[test]
+    fn parses_process_stat_with_parentheses_in_comm() {
+        let line = b"42 (worker (io)) S 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 2000 5";
+        let (pid, state, counters, ppid, start) = parse_process_stat(line).unwrap();
+        assert_eq!(pid, 42);
+        assert_eq!(state, ProcessState::Sleeping);
+        assert_eq!(ppid, 1);
+        assert_eq!(counters.user_ticks, 11);
+        assert_eq!(counters.system_ticks, 12);
+        assert_eq!(start, 19);
+        assert_eq!(counters.virtual_bytes, 2000);
+        assert_eq!(counters.resident_pages, 5);
+    }
 }
