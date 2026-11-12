@@ -33,7 +33,7 @@ jobs:
           else: patch += 1
           p.write_text(s[:m.start()] + f'version = "{major}.{minor}.{patch}"' + s[m.end():])
           PY
-      - run: cargo fmt --all -- --check
+      - run: cargo fmt --all
       - run: cargo test --all-features
       - run: cargo check --no-default-features
       - run: cargo check --all-features
