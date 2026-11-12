@@ -14,16 +14,7 @@ pub struct CpuTimes {
 
 impl CpuTimes {
     fn fields(self) -> [u64; 8] {
-        [
-            self.user,
-            self.nice,
-            self.system,
-            self.idle,
-            self.iowait,
-            self.irq,
-            self.softirq,
-            self.steal,
-        ]
+        [self.user, self.nice, self.system, self.idle, self.iowait, self.irq, self.softirq, self.steal]
     }
 
     /// Saturating total for display. Delta calculation uses wider arithmetic.

@@ -17,5 +17,13 @@ pub struct ProcessCounters {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProcessState {
-    Running, Sleeping, DiskSleep, Zombie, Stopped, Tracing, Dead, Idle, Unknown,
+    Running,
+    Sleeping,
+    DiskSleep,
+    Zombie,
+    Stopped,
+    Tracing,
+    Dead,
+    Idle,
+    Unknown,
 }

@@ -30,10 +30,8 @@ pub(crate) fn number(bytes: &[u8]) -> Result<u64, ParseError> {
         if !b.is_ascii_digit() {
             return Err(ParseError::InvalidNumber);
         }
-        value = value
-            .checked_mul(10)
-            .and_then(|v| v.checked_add(u64::from(b - b'0')))
-            .ok_or(ParseError::InvalidNumber)?;
+        value =
+            value.checked_mul(10).and_then(|v| v.checked_add(u64::from(b - b'0'))).ok_or(ParseError::InvalidNumber)?;
     }
     Ok(value)
 }
@@ -118,7 +116,8 @@ pub fn parse_meminfo(input: &[u8]) -> Result<Memory, ParseError> {
         return Err(ParseError::MissingField);
     }
     if !has_available {
-        out.available_bytes = out.free_bytes
+        out.available_bytes = out
+            .free_bytes
             .saturating_add(out.buffers_bytes)
             .saturating_add(out.cached_bytes)
             .saturating_add(reclaimable)
@@ -145,8 +144,7 @@ pub fn process_stat(input: &[u8]) -> Result<RawProcess<'_>, ParseError> {
     if open == 0 || close <= open || input.get(close + 1) != Some(&b' ') {
         return Err(ParseError::InvalidRecord);
     }
-    let pid = u32::try_from(number(input[..open].trim_ascii())?)
-        .map_err(|_| ParseError::InvalidNumber)?;
+    let pid = u32::try_from(number(input[..open].trim_ascii())?).map_err(|_| ParseError::InvalidNumber)?;
     let mut it = fields(&input[close + 2..]);
     let state = match it.next().ok_or(ParseError::MissingField)? {
         b"R" => ProcessState::Running,
@@ -163,8 +161,8 @@ pub fn process_stat(input: &[u8]) -> Result<RawProcess<'_>, ParseError> {
     let parent_pid = u32::try_from(next_number(&mut it)?).map_err(|_| ParseError::InvalidNumber)?;
     let user_ticks = number(it.nth(9).ok_or(ParseError::MissingField)?)?;
     let system_ticks = next_number(&mut it)?;
-    let threads = u32::try_from(number(it.nth(4).ok_or(ParseError::MissingField)?)?)
-        .map_err(|_| ParseError::InvalidNumber)?;
+    let threads =
+        u32::try_from(number(it.nth(4).ok_or(ParseError::MissingField)?)?).map_err(|_| ParseError::InvalidNumber)?;
     let start_time_ticks = number(it.nth(1).ok_or(ParseError::MissingField)?)?;
     let virtual_bytes = next_number(&mut it)?;
     let resident_pages = next_number(&mut it)?;
@@ -179,9 +177,7 @@ pub fn process_stat(input: &[u8]) -> Result<RawProcess<'_>, ParseError> {
 }
 
 /// Compatibility wrapper around the richer borrowed parser.
-pub fn parse_process_stat(
-    input: &[u8],
-) -> Result<(u32, ProcessState, ProcessCounters, u32, u64), ParseError> {
+pub fn parse_process_stat(input: &[u8]) -> Result<(u32, ProcessState, ProcessCounters, u32, u64), ParseError> {
     let p = process_stat(input)?;
     Ok((p.id.pid, p.state, p.counters, p.parent_pid, p.id.start_time_ticks))
 }
@@ -200,7 +196,10 @@ mod tests {
 
     #[test]
     fn derives_available_memory_when_kernel_omits_it() {
-        let m = parse_meminfo(b"MemTotal: 1000 kB\nMemFree: 100 kB\nBuffers: 20 kB\nCached: 200 kB\nSReclaimable: 30 kB\nShmem: 10 kB\n").unwrap();
+        let m = parse_meminfo(
+            b"MemTotal: 1000 kB\nMemFree: 100 kB\nBuffers: 20 kB\nCached: 200 kB\nSReclaimable: 30 kB\nShmem: 10 kB\n",
+        )
+        .unwrap();
         assert_eq!(m.available_bytes, 340 * 1024);
     }
 

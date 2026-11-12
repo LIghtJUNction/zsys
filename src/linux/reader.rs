@@ -1,13 +1,32 @@
 //! Linux collector reusing a single read buffer.
 
-use std::{fs::{self, File}, io::{self, Read}, path::{Path, PathBuf}};
-use crate::{cpu::CpuTimes, memory::Memory, process::{ProcessCounters, ProcessId, ProcessState}};
-use super::parse::{parse_cpu_stat, parse_meminfo, parse_process_stat, ParseError};
+use super::parse::{ParseError, parse_cpu_stat, parse_meminfo, parse_process_stat};
+use crate::{
+    cpu::CpuTimes,
+    memory::Memory,
+    process::{ProcessCounters, ProcessId, ProcessState},
+};
+use std::{
+    fs::{self, File},
+    io::{self, Read},
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug)]
-pub enum LinuxError { Io(io::Error), Parse(ParseError) }
-impl From<io::Error> for LinuxError { fn from(e: io::Error) -> Self { Self::Io(e) } }
-impl From<ParseError> for LinuxError { fn from(e: ParseError) -> Self { Self::Parse(e) } }
+pub enum LinuxError {
+    Io(io::Error),
+    Parse(ParseError),
+}
+impl From<io::Error> for LinuxError {
+    fn from(e: io::Error) -> Self {
+        Self::Io(e)
+    }
+}
+impl From<ParseError> for LinuxError {
+    fn from(e: ParseError) -> Self {
+        Self::Parse(e)
+    }
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ProcessRecord {
@@ -17,8 +36,15 @@ pub struct ProcessRecord {
     pub counters: ProcessCounters,
 }
 
-pub struct LinuxCollector { proc_root: PathBuf, buffer: Vec<u8> }
-impl Default for LinuxCollector { fn default() -> Self { Self::new() } }
+pub struct LinuxCollector {
+    proc_root: PathBuf,
+    buffer: Vec<u8>,
+}
+impl Default for LinuxCollector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl LinuxCollector {
     pub fn new() -> Self {
         Self { proc_root: PathBuf::from("/proc"), buffer: Vec::with_capacity(16 * 1024) }
@@ -47,12 +73,20 @@ impl LinuxCollector {
         let entries = fs::read_dir(&self.proc_root)?;
         let mut records = Vec::new();
         for entry in entries {
-            let entry = match entry { Ok(v) => v, Err(_) => continue };
+            let entry = match entry {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
             let Some(pid) = entry.file_name().to_str().and_then(|s| s.parse::<u32>().ok()) else { continue };
             self.buffer.clear();
             let path = entry.path().join("stat");
-            let mut file = match File::open(path) { Ok(v) => v, Err(_) => continue };
-            if file.read_to_end(&mut self.buffer).is_err() { continue; }
+            let mut file = match File::open(path) {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+            if file.read_to_end(&mut self.buffer).is_err() {
+                continue;
+            }
             if let Ok((parsed_pid, state, counters, parent_pid, start_time_ticks)) = parse_process_stat(&self.buffer) {
                 if parsed_pid == pid {
                     records.push(ProcessRecord {
