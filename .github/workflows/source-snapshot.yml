@@ -1,0 +1,25 @@
+name: Integration source snapshot
+on:
+  push:
+    branches: ['work/integrate-network-audit']
+    paths: ['.github/workflows/source-snapshot.yml']
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: |
+          mkdir -p snapshot
+          git archive HEAD | gzip -9 > snapshot/source.tar.gz
+          git rev-parse HEAD > snapshot/commit.txt
+          git rev-parse HEAD^{tree} > snapshot/tree.txt
+          sha256sum snapshot/source.tar.gz > snapshot/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: integration-source-${{ github.sha }}
+          path: snapshot/
+          retention-days: 7
