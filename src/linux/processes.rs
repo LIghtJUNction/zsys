@@ -28,7 +28,8 @@ pub struct Process {
     pub state: ProcessState,
     pub threads: u32,
     pub counters: ProcessCounters,
-    /// Resident set size from `/proc/PID/stat`; the kernel documents this as approximate.
+    /// Resident bytes from `/proc/PID/statm`, matching the kernel's resident-set interface.
+    /// Linux still documents this as approximate; `counters.resident_pages` preserves `stat`.
     pub memory_bytes: u64,
     pub cpu_percent: Option<f32>,
     pub sampled_at_ns: u64,
@@ -177,13 +178,22 @@ impl Processes {
 
     fn update(&mut self, pid: u32) -> Result<(bool, bool), LinuxError> {
         let mut path = [0; 64];
-        let file = open_at(&self.directory.file, pid_path(pid, b"/stat", &mut path))?;
+        // A procfs directory descriptor remains tied to this process after PID reuse.
+        // Both reads must use it so a dying PID cannot combine two processes' data.
+        let directory = open_at(&self.directory.file, pid_path(pid, b"", &mut path))?;
+        let memory_bytes = {
+            let file = open_at(&directory, c"statm")?;
+            let mut values = fields(self.buffer.read(&file)?);
+            let _virtual_pages = number(values.next().ok_or(crate::parse::ParseError::MissingField)?)?;
+            number(values.next().ok_or(crate::parse::ParseError::MissingField)?)?
+                .checked_mul(self.page_size)
+                .ok_or(crate::parse::ParseError::InvalidNumber)?
+        };
+        let file = open_at(&directory, c"stat")?;
         let raw = process_stat(self.buffer.read(&file)?)?;
         if raw.id.pid != pid {
             return Err(crate::parse::ParseError::InvalidRecord.into());
         }
-        let memory_bytes =
-            raw.counters.resident_pages.checked_mul(self.page_size).ok_or(crate::parse::ParseError::InvalidNumber)?;
         let now = self.started.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
         let mut added = false;
         let entry = self.table.entry(pid).or_insert_with(|| {

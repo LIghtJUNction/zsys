@@ -9,7 +9,7 @@ repository = "https://github.com/LIghtJUNction/zsys"
 readme = "README.md"
 keywords = ["system", "procfs", "monitoring", "performance"]
 categories = ["os", "hardware-support"]
-include = ["src/**", "examples/**", "tests/**", "README.md", "BENCHMARKS.md", "CHANGELOG.md", "LICENSE-*", "docs/semantics.md", "docs/platforms.md", "Cargo.toml", "Cargo.lock"]
+include = ["src/**", "examples/**", "tests/**", "README.md", "BENCHMARKS.md", "CHANGELOG.md", "LICENSE-*", "docs/semantics.md", "docs/platforms.md", "docs/architecture.md", "Cargo.toml", "Cargo.lock"]
 
 [features]
 default = ["std"]

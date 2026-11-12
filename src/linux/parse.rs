@@ -26,6 +26,18 @@ pub(crate) fn number(bytes: &[u8]) -> Result<u64, ParseError> {
         return Err(ParseError::InvalidNumber);
     }
     let mut value = 0u64;
+    // Any 19 decimal digits fit in u64. Keep the checked path for longer
+    // inputs, including valid values with arbitrarily many leading zeroes.
+    if bytes.len() <= 19 {
+        for &byte in bytes {
+            let digit = byte.wrapping_sub(b'0');
+            if digit > 9 {
+                return Err(ParseError::InvalidNumber);
+            }
+            value = value * 10 + u64::from(digit);
+        }
+        return Ok(value);
+    }
     for &b in bytes {
         if !b.is_ascii_digit() {
             return Err(ParseError::InvalidNumber);
@@ -78,6 +90,10 @@ pub(crate) fn cpu_fields<'a>(mut it: impl Iterator<Item = &'a [u8]>) -> Result<C
 }
 
 pub fn parse_meminfo(input: &[u8]) -> Result<Memory, ParseError> {
+    meminfo(input).map(|(memory, _)| memory)
+}
+
+pub(crate) fn meminfo(input: &[u8]) -> Result<(Memory, bool), ParseError> {
     let mut out = Memory::default();
     let mut has_available = false;
     let mut has_free = false;
@@ -124,7 +140,7 @@ pub fn parse_meminfo(input: &[u8]) -> Result<Memory, ParseError> {
             .saturating_sub(shared)
             .min(out.total_bytes);
     }
-    Ok(out)
+    Ok((out, !has_available))
 }
 
 /// Borrowed process record. `name` is raw bytes: procfs does not guarantee UTF-8.
@@ -233,6 +249,10 @@ mod tests {
         assert!(parse_meminfo(b"MemTotal: 1000 kB\n").is_err());
         assert!(parse_meminfo(b"MemTotal: 1 GB\nMemFree: 1 kB").is_err());
         assert!(number(b"18446744073709551616").is_err());
+        assert_eq!(number(b"9999999999999999999"), Ok(9_999_999_999_999_999_999));
+        assert_eq!(number(b"18446744073709551615"), Ok(u64::MAX));
+        assert_eq!(number(b"000000000000000000000000001"), Ok(1));
+        assert!(number(b"999999999999999999x").is_err());
         assert!(process_stat(b"4294967296 (x) R 1").is_err());
         assert!(process_stat(b"1 (x) R 1").is_err());
     }

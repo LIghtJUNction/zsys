@@ -25,6 +25,8 @@ pub struct ProcessCounters {
     pub user_ticks: u64,
     pub system_ticks: u64,
     pub virtual_bytes: u64,
+    /// Raw approximate resident pages from `/proc/PID/stat`; a collector can expose
+    /// an independently sampled resident byte count from `statm`.
     pub resident_pages: u64,
 }
 impl ProcessCounters {

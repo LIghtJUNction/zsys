@@ -7,7 +7,7 @@ use crate::{
     parse::ParseError,
 };
 use std::collections::HashMap;
-use std::ffi::{CStr, c_char, c_int, c_uint, c_ulong, c_void};
+use std::ffi::{CStr, c_char, c_int, c_uint, c_void};
 use std::io;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
@@ -344,9 +344,13 @@ struct IfConfig {
     length: c_int,
     requests: *mut IfRequest,
 }
+#[cfg(target_env = "musl")]
+type IoctlRequest = c_int;
+#[cfg(not(target_env = "musl"))]
+type IoctlRequest = std::ffi::c_ulong;
 unsafe extern "C" {
     fn socket(domain: c_int, kind: c_int, protocol: c_int) -> c_int;
-    fn ioctl(fd: c_int, request: c_ulong, ...) -> c_int;
+    fn ioctl(fd: c_int, request: IoctlRequest, ...) -> c_int;
 }
 fn datagram_socket() -> io::Result<OwnedFd> {
     // SAFETY: AF_INET, SOCK_DGRAM | SOCK_CLOEXEC; no packets are sent and no address is bound.
@@ -357,7 +361,7 @@ fn datagram_socket() -> io::Result<OwnedFd> {
     // SAFETY: the new owned descriptor is transferred once and closed by OwnedFd.
     Ok(unsafe { OwnedFd::from_raw_fd(descriptor) })
 }
-fn query(socket: &OwnedFd, name: &[u8], operation: c_ulong) -> io::Result<IfRequest> {
+fn query(socket: &OwnedFd, name: &[u8], operation: IoctlRequest) -> io::Result<IfRequest> {
     let mut request = IfRequest::new(name)?;
     // SAFETY: the caller supplies a fixed read-only ifreq operation; request has the native ABI.
     if unsafe { ioctl(socket.as_raw_fd(), operation, &mut request) } < 0 {
@@ -396,7 +400,7 @@ fn ioctl_details(sampled_at_ns: u64) -> io::Result<Vec<InterfaceDetails>> {
             requests: requests.as_mut_ptr(),
         };
         // SAFETY: config points to the initialized, correctly aligned array of the stated byte length.
-        if unsafe { ioctl(socket.as_raw_fd(), 0x8912 as c_ulong, &mut config) } < 0 {
+        if unsafe { ioctl(socket.as_raw_fd(), 0x8912 as IoctlRequest, &mut config) } < 0 {
             return Err(io::Error::last_os_error());
         }
         let returned = usize::try_from(config.length).map_err(|_| io::ErrorKind::InvalidData)?;

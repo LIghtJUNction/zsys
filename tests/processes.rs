@@ -21,6 +21,7 @@ impl Fixture {
             format!("{pid} (test (worker)) S 1 0 0 0 0 0 0 0 0 0 {user} 0 0 0 20 0 2 0 {start} 8192 3\n"),
         )
         .unwrap();
+        fs::write(self.0.join(format!("{pid}/statm")), b"2 3 0 0 0 0 0\n").unwrap();
     }
 }
 impl Drop for Fixture {
@@ -49,7 +50,7 @@ fn lifecycle_reuse_and_inaccessible_records_are_not_conflated() {
     assert_eq!(p.refresh().unwrap().failed, 1);
     assert_eq!(p.get(42).unwrap().availability, Availability::Vanished);
     assert_eq!(p.get(42).unwrap().memory_bytes, 12288);
-    fs::remove_dir(f.0.join("42")).unwrap();
+    fs::remove_dir_all(f.0.join("42")).unwrap();
     assert_eq!(p.refresh().unwrap().removed, 1);
     assert!(p.is_empty());
 }
@@ -250,4 +251,53 @@ fn rapid_creation_and_exit_do_not_leave_records() {
         assert!(p.refresh_pid(pid).is_err());
         assert!(p.get(pid).is_none());
     }
+}
+
+#[test]
+fn resident_memory_uses_statm_and_preserves_raw_stat_counter() {
+    let f = Fixture::new();
+    f.process(42, 100, 10);
+    fs::write(f.0.join("42/statm"), b"20 7 0 0 0 0 0\n").unwrap();
+    let mut p = Processes::with_parameters(&f.0, 100, 4096).unwrap();
+    let process = p.refresh_pid(42).unwrap();
+    assert_eq!(process.memory_bytes, 7 * 4096);
+    assert_eq!(process.counters.resident_pages, 3);
+}
+
+#[test]
+fn failed_statm_read_preserves_last_good_record() {
+    let f = Fixture::new();
+    f.process(42, 100, 10);
+    let mut p = Processes::with_parameters(&f.0, 100, 4096).unwrap();
+    p.refresh().unwrap();
+    for input in [b"2 bad\n".as_slice(), b"2\n", b"2 18446744073709551615\n"] {
+        fs::write(f.0.join("42/statm"), input).unwrap();
+        assert_eq!(p.refresh().unwrap().failed, 1);
+        assert_eq!(p.get(42).unwrap().availability, Availability::Invalid);
+        assert_eq!(p.get(42).unwrap().memory_bytes, 3 * 4096);
+    }
+    fs::remove_file(f.0.join("42/statm")).unwrap();
+    assert_eq!(p.refresh().unwrap().failed, 1);
+    assert_eq!(p.get(42).unwrap().availability, Availability::Vanished);
+    f.process(42, 100, 20);
+    assert_eq!(p.refresh().unwrap().failed, 0);
+    assert_eq!(p.get(42).unwrap().cpu_percent, None);
+}
+
+#[test]
+fn statm_permission_loss_is_reported_without_fake_zero_memory() {
+    use std::os::unix::fs::PermissionsExt;
+    let f = Fixture::new();
+    f.process(42, 100, 10);
+    let path = f.0.join("42/statm");
+    let mut p = Processes::with_parameters(&f.0, 100, 4096).unwrap();
+    p.refresh().unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o0)).unwrap();
+    if fs::File::open(&path).is_err_and(|e| e.kind() == std::io::ErrorKind::PermissionDenied) {
+        assert!(p.refresh_pid(42).is_err());
+        assert_eq!(p.get(42).unwrap().availability, Availability::Inaccessible);
+        assert_eq!(p.get(42).unwrap().memory_bytes, 3 * 4096);
+    }
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
+    assert_eq!(p.refresh_pid(42).unwrap().availability, Availability::Fresh);
 }

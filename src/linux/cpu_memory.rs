@@ -1,7 +1,7 @@
 //! Independently usable CPU and memory collectors with reusable storage.
 use super::LinuxError;
 use super::io::CachedFile;
-use crate::parse::{ParseError, cpu_fields, fields, number, parse_cpu_stat, parse_meminfo};
+use crate::parse::{ParseError, cpu_fields, fields, meminfo, number, parse_cpu_stat};
 use crate::{Sample, cpu::CpuTimes, memory::Memory};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -140,8 +140,7 @@ impl MemoryCollector {
     }
     pub fn refresh(&mut self) -> Result<&MemorySample, LinuxError> {
         let bytes = self.file.read()?;
-        let counters = parse_meminfo(bytes)?;
-        let available_is_estimate = !bytes.split(|b| *b == b'\n').any(|line| line.starts_with(b"MemAvailable:"));
+        let (counters, available_is_estimate) = meminfo(bytes)?;
         self.current = MemorySample {
             counters,
             available_is_estimate,
