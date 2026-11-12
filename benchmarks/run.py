@@ -48,10 +48,14 @@ def main():
     p.add_argument('--cases', nargs='+', default=['memory', 'cpu', 'process_single', 'process_all', 'disk', 'network', 'basic', 'full', 'cold_basic'])
     p.add_argument('--implementations', nargs='+', choices=['zsys', 'sysinfo'], default=['zsys', 'sysinfo'])
     p.add_argument('--binary')
+    p.add_argument('--directory-cache-limit', type=int, default=0, help='Explicit zsys PID directory descriptor budget; default disabled')
     p.add_argument('--processes', type=int, default=0, help='Target this many visible processes, including the benchmark child; uses controlled sleeping children')
     a = p.parse_args()
     if not (1 <= a.samples <= 1_000_000 and 1 <= a.paced_samples <= 1_000_000 and 1 <= a.repeats <= 100):
         p.error('invalid sample/repeat count')
+    if a.directory_cache_limit < 0:
+        p.error('directory cache limit must be nonnegative')
+    os.environ['ZSYS_DIRECTORY_CACHE_LIMIT'] = str(a.directory_cache_limit)
     root = pathlib.Path(__file__).resolve().parent.parent
     out = root / a.output
     out.mkdir(parents=True, exist_ok=True)
@@ -66,6 +70,10 @@ def main():
     mode = subprocess.check_output([str(binary), 'zsys', 'measurement_mode', '1'], text=True).strip()
     if mode not in ('latency', 'allocation-counting'):
         p.error('binary does not identify a supported measurement mode')
+    if a.directory_cache_limit:
+        supported = subprocess.check_output([str(binary), 'zsys', 'directory_cache_limit', '1'], text=True).strip()
+        if supported != str(a.directory_cache_limit):
+            p.error('binary does not support the requested directory cache budget')
     def command(*cmd):
         return subprocess.check_output(cmd, text=True, cwd=root).strip()
     def read(path):
@@ -113,6 +121,8 @@ def main():
             'rlimit_nproc': resource.getrlimit(resource.RLIMIT_NPROC),
             'cpu_affinity': sorted(os.sched_getaffinity(0)),
             'measurement_mode': mode,
+            'zsys_directory_cache_limit': a.directory_cache_limit,
+            'rlimit_nofile': resource.getrlimit(resource.RLIMIT_NOFILE),
             'allocation_scope': ('Successful Rust global alloc/alloc_zeroed/realloc requested bytes; instrumented timings are not production latency; excludes C allocations' if mode == 'allocation-counting' else 'Not measured: plain System allocator; empty CSV/JSON null allocation fields'),
             'peak_memory_scope': 'VmHWM per fresh child includes executable, loader, allocator and harness; per-op peak_extra_live_bytes counts requested Rust heap; not a heap profiler',
             'retained_heap_scope': 'Requested Rust heap retained by setup/collector after warmup and after measurements; excludes sample array, includes path and metadata setup',
@@ -155,7 +165,7 @@ def main():
                     prefix = out / f'{case}-{impl}-{repeat}'
                     prefix.with_suffix('.csv.gz').write_bytes(gzip.compress(run.stdout.encode(), mtime=0))
                     prefix.with_suffix('.stderr').write_text(run.stderr)
-                    item = dict(case=case, implementation=impl, repeat=repeat, scope=SCOPES[case][0], measurement_mode=mode, raw_samples_sha256=hashlib.sha256(run.stdout.encode()).hexdigest())
+                    item = dict(case=case, implementation=impl, repeat=repeat, scope=SCOPES[case][0], measurement_mode=mode, zsys_directory_cache_limit=a.directory_cache_limit, raw_samples_sha256=hashlib.sha256(run.stdout.encode()).hexdigest())
                     if case.startswith(('process_', 'cold_process_', 'basic', 'cold_basic', 'full')) and process_scope is False: item['scope'] = 'unmatched_process_metadata'
                     if case in ('network', 'full') and network_scope is False: item['scope'] = 'unmatched_network_metadata'
                     if case == 'network': item['scope'] = 'matched' if network_scope else 'unmatched_network_metadata'

@@ -158,8 +158,10 @@ fn observe_sysinfo_processes(c: &sysinfo::System) {
         ));
     }
 }
+static DIRECTORY_CACHE_LIMIT: AtomicU64 = AtomicU64::new(0);
 fn zsys_processes(std_scan: bool) -> zsys::linux::Processes {
     let mut c = zsys::linux::Processes::new().unwrap();
+    c.set_directory_cache_limit(DIRECTORY_CACHE_LIMIT.load(Relaxed) as usize);
     if std_scan {
         c.set_scan_mode(zsys::linux::ScanMode::Std);
     }
@@ -175,6 +177,15 @@ fn main() {
         println!("{}", if cfg!(feature = "allocation-counting") { "allocation-counting" } else { "latency" });
         return;
     }
+    let cache_limit = std::env::var("ZSYS_DIRECTORY_CACHE_LIMIT")
+        .map(|value| value.parse::<usize>().expect("ZSYS_DIRECTORY_CACHE_LIMIT must be a nonnegative integer"))
+        .unwrap_or(0);
+    DIRECTORY_CACHE_LIMIT.store(cache_limit as u64, Relaxed);
+    if case == "directory_cache_limit" {
+        println!("{cache_limit}");
+        return;
+    }
+    eprintln!("directory_cache_limit={cache_limit}");
     if case == "validate_process" {
         validate_process().unwrap();
         println!("process_scope_verified=true");
