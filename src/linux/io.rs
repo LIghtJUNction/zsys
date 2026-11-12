@@ -62,13 +62,18 @@ impl CachedFile {
 }
 
 pub(crate) fn open_at(directory: &File, name: &CStr) -> io::Result<File> {
-    // SAFETY: name is NUL-terminated; no mode argument is needed without O_CREAT.
-    let fd = unsafe { openat(directory.as_raw_fd(), name.as_ptr(), 0x80000) }; // O_RDONLY | O_CLOEXEC
-    if fd < 0 {
-        return Err(io::Error::last_os_error());
+    loop {
+        // SAFETY: name is NUL-terminated; no mode argument is needed without O_CREAT.
+        let fd = unsafe { openat(directory.as_raw_fd(), name.as_ptr(), 0x80000) }; // O_RDONLY | O_CLOEXEC
+        if fd >= 0 {
+            // SAFETY: openat returned a new owned descriptor, transferred exactly once.
+            return Ok(unsafe { File::from_raw_fd(fd) });
+        }
+        let error = io::Error::last_os_error();
+        if error.kind() != io::ErrorKind::Interrupted {
+            return Err(error);
+        }
     }
-    // SAFETY: openat returned a new owned descriptor, transferred exactly once.
-    Ok(unsafe { File::from_raw_fd(fd) })
 }
 
 pub(crate) fn clock_parameters() -> io::Result<(u64, u64)> {

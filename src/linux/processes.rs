@@ -23,10 +23,12 @@ pub enum Availability {
 pub struct Process {
     pub id: ProcessId,
     pub parent_pid: u32,
+    /// Kernel `comm` bytes, not necessarily UTF-8 or the full executable name.
     pub name: Vec<u8>,
     pub state: ProcessState,
     pub threads: u32,
     pub counters: ProcessCounters,
+    /// Resident set size from `/proc/PID/stat`; the kernel documents this as approximate.
     pub memory_bytes: u64,
     pub cpu_percent: Option<f32>,
     pub sampled_at_ns: u64,
@@ -37,6 +39,7 @@ pub struct Process {
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct ProcessChanges {
     pub added: usize,
+    /// Successful samples, including newly added and reused PIDs.
     pub updated: usize,
     pub removed: usize,
     pub reused: usize,
@@ -115,6 +118,14 @@ impl Processes {
     }
     pub fn page_size(&self) -> u64 {
         self.page_size
+    }
+
+    /// Lists numeric PIDs without reading their records or changing the process table.
+    /// The returned list is sorted, unique, and borrowed from reusable storage.
+    /// A PID can exit immediately after enumeration; use `refresh_pid` to read it.
+    pub fn enumerate_pids(&mut self) -> Result<&[u32], LinuxError> {
+        self.directory.pids(&mut self.pids, self.mode)?;
+        Ok(&self.pids)
     }
 
     /// Enumerates first: a failed directory scan never deletes the existing process table.
@@ -219,6 +230,9 @@ impl Processes {
         let directory = open_at(&self.directory.file, pid_path(pid, b"", &mut path))?;
         let stat = open_at(&directory, c"stat")?;
         let identity = process_stat(self.buffer.read(&stat)?)?.id;
+        if identity.pid != pid {
+            return Err(crate::parse::ParseError::InvalidRecord.into());
+        }
         let mut result = ProcessDetails {
             id: identity,
             executable: Detail::NotRequested,
@@ -260,9 +274,25 @@ impl Processes {
 
 fn classify(error: &LinuxError) -> Availability {
     match error {
-        LinuxError::Io(e) if e.kind() == io::ErrorKind::NotFound => Availability::Vanished,
+        // Open procfs descriptors for exited processes commonly report ESRCH.
+        LinuxError::Io(e) if e.kind() == io::ErrorKind::NotFound || e.raw_os_error() == Some(3) => {
+            Availability::Vanished
+        }
         LinuxError::Io(e) if e.kind() == io::ErrorKind::PermissionDenied => Availability::Inaccessible,
         _ => Availability::Invalid,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn classifies_exited_and_inaccessible_processes() {
+        assert_eq!(classify(&io::Error::from_raw_os_error(3).into()), Availability::Vanished);
+        assert_eq!(classify(&io::Error::from_raw_os_error(2).into()), Availability::Vanished);
+        assert_eq!(classify(&io::Error::from_raw_os_error(13).into()), Availability::Inaccessible);
+        assert_eq!(classify(&crate::parse::ParseError::InvalidRecord.into()), Availability::Invalid);
     }
 }
 

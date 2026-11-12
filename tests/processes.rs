@@ -125,3 +125,129 @@ fn repeated_refresh_and_child_exit() {
     assert!(p.refresh_pid(pid).is_err());
     assert!(p.get(pid).is_none());
 }
+
+#[test]
+fn enumeration_preserves_samples_and_deduplicates_numeric_names() {
+    let f = Fixture::new();
+    f.process(7, 10, 1);
+    f.process(900, 20, 2);
+    fs::create_dir(f.0.join("0007")).unwrap();
+    fs::create_dir(f.0.join("4294967296")).unwrap();
+    fs::create_dir(f.0.join("0")).unwrap();
+    let mut p = Processes::with_parameters(&f.0, 100, 4096).unwrap();
+    assert_eq!(p.enumerate_pids().unwrap(), [7, 900]);
+    assert!(p.is_empty());
+    p.refresh_pid(7).unwrap();
+    let timestamp = p.get(7).unwrap().sampled_at_ns;
+    p.enumerate_pids().unwrap();
+    assert_eq!(p.get(7).unwrap().sampled_at_ns, timestamp);
+    assert!(p.get(900).is_none());
+}
+
+#[test]
+fn failed_enumeration_keeps_existing_table() {
+    let f = Fixture::new();
+    f.process(7, 10, 1);
+    let mut p = Processes::with_parameters(&f.0, 100, 4096).unwrap();
+    p.set_scan_mode(ScanMode::Std);
+    p.refresh().unwrap();
+    let moved = f.0.with_extension("moved");
+    fs::rename(&f.0, &moved).unwrap();
+    let result = p.refresh();
+    fs::rename(&moved, &f.0).unwrap();
+    assert!(result.is_err());
+    assert_eq!(p.len(), 1);
+    assert_eq!(p.get(7).unwrap().id.start_time_ticks, 10);
+}
+
+#[test]
+fn invalid_sample_preserves_data_and_resets_cpu_baseline() {
+    let f = Fixture::new();
+    f.process(42, 100, 10);
+    let mut p = Processes::with_parameters(&f.0, 100, 4096).unwrap();
+    p.refresh().unwrap();
+    fs::write(f.0.join("42/stat"), b"42 (truncated)").unwrap();
+    assert_eq!(p.refresh().unwrap().failed, 1);
+    let old = p.get(42).unwrap();
+    assert_eq!(old.availability, Availability::Invalid);
+    assert_eq!(old.counters.user_ticks, 10);
+    assert_eq!(old.cpu_percent, None);
+    f.process(42, 100, 20);
+    p.refresh().unwrap();
+    assert_eq!(p.get(42).unwrap().availability, Availability::Fresh);
+    assert_eq!(p.get(42).unwrap().cpu_percent, None);
+    p.refresh().unwrap();
+    assert_eq!(p.get(42).unwrap().cpu_percent, Some(0.0));
+}
+
+#[test]
+fn details_preserve_bytes_and_report_each_requested_field() {
+    use std::os::unix::fs::symlink;
+    let f = Fixture::new();
+    f.process(42, 100, 10);
+    fs::write(f.0.join("42/cmdline"), b"hello\0\0\xffarg\0").unwrap();
+    fs::write(f.0.join("42/status"), b"Uid:\t1\t2\t3\t4\nGid:\t5\t6\t7\t8\n").unwrap();
+    symlink("/fixture/executable", f.0.join("42/exe")).unwrap();
+    let mut p = Processes::with_parameters(&f.0, 100, 4096).unwrap();
+    let no_details = p.details(42, DetailOptions::default()).unwrap();
+    assert!(matches!(no_details.command_line, Detail::NotRequested));
+    assert!(matches!(no_details.executable, Detail::NotRequested));
+    assert!(matches!(no_details.user_ids, Detail::NotRequested));
+    let details = p.details(42, DetailOptions::all()).unwrap();
+    assert!(matches!(details.command_line, Detail::Value(v) if v == b"hello\0\0\xffarg\0"));
+    assert!(matches!(details.executable, Detail::Value(v) if v == PathBuf::from("/fixture/executable")));
+    assert!(matches!(details.user_ids, Detail::Value([1, 2, 3, 4])));
+    assert!(matches!(details.group_ids, Detail::Value([5, 6, 7, 8])));
+    fs::remove_file(f.0.join("42/exe")).unwrap();
+    assert!(matches!(
+        p.details(42, DetailOptions::all()).unwrap().executable,
+        Detail::Unavailable(std::io::ErrorKind::NotFound)
+    ));
+}
+
+#[test]
+fn details_reject_a_mismatched_stat_identity() {
+    let f = Fixture::new();
+    f.process(42, 100, 10);
+    let bytes = fs::read_to_string(f.0.join("42/stat")).unwrap().replacen("42", "43", 1);
+    fs::write(f.0.join("42/stat"), bytes).unwrap();
+    let mut p = Processes::with_parameters(&f.0, 100, 4096).unwrap();
+    assert!(p.details(42, DetailOptions::default()).is_err());
+    assert!(p.refresh_pid(42).is_err());
+}
+
+#[test]
+fn permission_loss_retains_explicitly_stale_data() {
+    use std::os::unix::fs::PermissionsExt;
+    let f = Fixture::new();
+    f.process(42, 100, 10);
+    let path = f.0.join("42/stat");
+    let mut p = Processes::with_parameters(&f.0, 100, 4096).unwrap();
+    p.refresh().unwrap();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0)).unwrap();
+    // Privileged runners can bypass mode bits; the exact errno mapping is tested separately.
+    if fs::File::open(&path).is_err_and(|e| e.kind() == std::io::ErrorKind::PermissionDenied) {
+        assert_eq!(p.refresh().unwrap().failed, 1);
+        let stale = p.get(42).unwrap();
+        assert_eq!(stale.availability, Availability::Inaccessible);
+        assert_eq!(stale.counters.user_ticks, 10);
+        assert_eq!(stale.cpu_percent, None);
+    }
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
+    p.refresh().unwrap();
+    assert_eq!(p.get(42).unwrap().availability, Availability::Fresh);
+}
+
+#[test]
+fn rapid_creation_and_exit_do_not_leave_records() {
+    let mut p = Processes::new().unwrap();
+    for _ in 0..32 {
+        let mut child = std::process::Command::new("true").spawn().unwrap();
+        let pid = child.id();
+        // Either outcome is valid while the child is racing with the sample.
+        let _ = p.refresh_pid(pid);
+        child.wait().unwrap();
+        assert!(p.refresh_pid(pid).is_err());
+        assert!(p.get(pid).is_none());
+    }
+}

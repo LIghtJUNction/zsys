@@ -7,6 +7,19 @@ pub struct ProcessId {
     pub start_time_ticks: u64,
 }
 
+impl ProcessId {
+    /// Kernel boot-relative start time, with subsecond precision from `_SC_CLK_TCK`.
+    /// This is not a wall-clock timestamp. Zero clock frequency is invalid.
+    pub fn start_time_since_boot(self, ticks_per_second: u64) -> Option<core::time::Duration> {
+        if ticks_per_second == 0 {
+            return None;
+        }
+        let seconds = self.start_time_ticks / ticks_per_second;
+        let nanos = u128::from(self.start_time_ticks % ticks_per_second) * 1_000_000_000 / u128::from(ticks_per_second);
+        Some(core::time::Duration::new(seconds, nanos as u32))
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct ProcessCounters {
     pub user_ticks: u64,
@@ -52,5 +65,14 @@ mod tests {
         assert_eq!(new.cpu_percent_since(old, 2_000_000_000, 100), Some(100.0));
         assert_eq!(new.cpu_percent_since(old, 0, 100), None);
         assert_eq!(old.cpu_percent_since(new, 1, 100), None);
+    }
+
+    #[test]
+    fn start_time_keeps_subsecond_precision() {
+        let id = ProcessId { pid: 1, start_time_ticks: 151 };
+        assert_eq!(id.start_time_since_boot(100), Some(core::time::Duration::from_millis(1510)));
+        assert_eq!(id.start_time_since_boot(0), None);
+        let id = ProcessId { pid: 1, start_time_ticks: u64::MAX };
+        assert_eq!(id.start_time_since_boot(u64::MAX), Some(core::time::Duration::from_secs(1)));
     }
 }
