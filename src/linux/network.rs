@@ -1,6 +1,6 @@
 //! Traffic counters are separate from address/flag discovery; both are explicitly refreshed.
 use super::LinuxError;
-use super::io::CachedFile;
+use super::io::{Buffer, CachedFile};
 use crate::{
     Sample,
     network::{NetworkCounters, parse_net_dev_line},
@@ -8,6 +8,7 @@ use crate::{
 };
 use std::collections::HashMap;
 use std::ffi::{CStr, c_char, c_int, c_uint, c_void};
+use std::fs::File;
 use std::io;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::os::unix::ffi::OsStrExt;
@@ -77,6 +78,7 @@ struct StagedNetwork {
 pub struct Networks {
     file: CachedFile,
     sys_root: PathBuf,
+    detail_buffer: Option<Buffer>,
     staged: Vec<StagedNetwork>,
     table: HashMap<Vec<u8>, Network>,
     started: Instant,
@@ -98,6 +100,7 @@ impl Networks {
         Self {
             file: CachedFile::new(proc_root.as_ref().join("net/dev")),
             sys_root: sys_root.as_ref().to_owned(),
+            detail_buffer: None,
             staged: Vec::new(),
             table: HashMap::new(),
             started: Instant::now(),
@@ -173,7 +176,8 @@ impl Networks {
     /// Uses the current network namespace, independently of a custom procfs fixture root.
     pub fn refresh_details(&mut self) -> io::Result<()> {
         let now = self.started.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
-        let mut details = interface_details(now, &self.sys_root)?;
+        let buffer = self.detail_buffer.get_or_insert_with(|| Buffer::new(256, 4096));
+        let mut details = interface_details(now, &self.sys_root, buffer)?;
         for network in self.table.values_mut() {
             let value = details.iter().position(|d| d.name == network.name).map(|index| details.swap_remove(index));
             apply_details(network, value);
@@ -252,7 +256,7 @@ impl Drop for AddressList {
         unsafe { freeifaddrs(self.0) };
     }
 }
-fn interface_details(sampled_at_ns: u64, sys_root: &Path) -> io::Result<Vec<InterfaceDetails>> {
+fn interface_details(sampled_at_ns: u64, sys_root: &Path, buffer: &mut Buffer) -> io::Result<Vec<InterfaceDetails>> {
     let mut head = std::ptr::null_mut();
     // SAFETY: head points to writable pointer storage.
     if unsafe { getifaddrs(&mut head) } != 0 {
@@ -303,17 +307,21 @@ fn interface_details(sampled_at_ns: u64, sys_root: &Path) -> io::Result<Vec<Inte
         }
     }
     for interface in &mut result {
-        read_link_properties(interface, sys_root);
+        read_link_properties(interface, sys_root, buffer);
     }
     Ok(result)
 }
-fn read_link_properties(interface: &mut InterfaceDetails, sys_root: &Path) {
+fn read_link_properties(interface: &mut InterfaceDetails, sys_root: &Path, buffer: &mut Buffer) {
     let path = sys_root.join("class/net").join(std::ffi::OsStr::from_bytes(&interface.name));
-    let number =
-        |name| std::fs::read(path.join(name)).ok().and_then(|bytes| crate::parse::number(bytes.trim_ascii()).ok());
+    let mut number = |name| {
+        let file = File::open(path.join(name)).ok()?;
+        let bytes = buffer.read(&file).ok()?;
+        crate::parse::number(bytes.trim_ascii()).ok()
+    };
     interface.mtu = number("mtu");
     interface.link_speed_bps = number("speed").filter(|value| *value != 0).and_then(|mbps| mbps.checked_mul(1_000_000));
-    interface.operational_state = std::fs::read(path.join("operstate")).ok().and_then(|value| {
+    interface.operational_state = File::open(path.join("operstate")).ok().and_then(|file| {
+        let value = buffer.read(&file).ok()?;
         Some(match value.trim_ascii() {
             b"unknown" => OperationalState::Unknown,
             b"notpresent" => OperationalState::NotPresent,
@@ -359,6 +367,18 @@ mod tests {
         assert_eq!(std::mem::offset_of!(Address6, scope), 24);
         assert_eq!(std::mem::size_of::<LinkAddress>(), 20);
         assert_eq!(std::mem::offset_of!(LinkAddress, address), 12);
+    }
+    #[test]
+    fn counter_only_collection_does_not_allocate_metadata_storage() {
+        let mut collector = Networks::new();
+        collector.refresh_counters().unwrap();
+        assert!(collector.detail_buffer.is_none());
+        collector.refresh_details().unwrap();
+        assert!(collector.detail_buffer.is_some());
+        // A second read must retain the same buffer object, not replace it.
+        let before = std::ptr::from_ref(collector.detail_buffer.as_ref().unwrap());
+        collector.refresh_details().unwrap();
+        assert_eq!(before, std::ptr::from_ref(collector.detail_buffer.as_ref().unwrap()));
     }
     fn details(index: u32) -> InterfaceDetails {
         InterfaceDetails {
