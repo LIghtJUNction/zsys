@@ -1,6 +1,6 @@
 //! Traffic counters are separate from address/flag discovery; both are explicitly refreshed.
 use super::LinuxError;
-use super::io::CachedFile;
+use super::io::{Buffer, CachedFile};
 use crate::{
     Sample,
     network::{NetworkCounters, parse_net_dev_line},
@@ -8,6 +8,7 @@ use crate::{
 };
 use std::collections::HashMap;
 use std::ffi::{CStr, c_char, c_int, c_uint, c_void};
+use std::fs::File;
 use std::io;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
@@ -74,6 +75,7 @@ struct StagedNetwork {
 }
 pub struct Networks {
     file: CachedFile,
+    detail_buffer: Option<Buffer>,
     table: HashMap<Vec<u8>, Network>,
     staged: Vec<StagedNetwork>,
     started: Instant,
@@ -91,6 +93,7 @@ impl Networks {
     pub fn with_proc_root(root: impl AsRef<Path>) -> Self {
         Self {
             file: CachedFile::new(root.as_ref().join("net/dev")),
+            detail_buffer: None,
             table: HashMap::new(),
             staged: Vec::new(),
             started: Instant::now(),
@@ -168,19 +171,22 @@ impl Networks {
     /// Uses the current network namespace, independently of a custom procfs fixture root.
     pub fn refresh_details(&mut self) -> io::Result<()> {
         let now = self.started.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
-        let details = interface_details(now)?;
-        self.apply_details(&details);
+        let buffer = self.detail_buffer.get_or_insert_with(|| Buffer::new(256, 4096));
+        let details = interface_details(now, buffer)?;
+        self.apply_details(details);
         Ok(())
     }
-    fn apply_details(&mut self, details: &[InterfaceDetails]) {
+    fn apply_details(&mut self, mut details: Vec<InterfaceDetails>) {
         for network in self.table.values_mut() {
-            if let Some(value) = details.iter().find(|d| d.name == network.name) {
+            if let Some(index) = details.iter().position(|d| d.name == network.name) {
+                // Transfer the already-owned metadata; cloning duplicates every address/name buffer.
+                let value = details.swap_remove(index);
                 if network.details.as_ref().is_none_or(|old| old.index != value.index) {
                     network.delta = None;
                     network.interval_ns = None;
                     network.baseline_valid = false;
                 }
-                network.details = Some(value.clone());
+                network.details = Some(value);
             } else if network.details.take().is_some() {
                 network.delta = None;
                 network.interval_ns = None;
@@ -234,7 +240,7 @@ impl Drop for AddressList {
         unsafe { freeifaddrs(self.0) };
     }
 }
-fn interface_details(sampled_at_ns: u64) -> io::Result<Vec<InterfaceDetails>> {
+fn interface_details(sampled_at_ns: u64, buffer: &mut Buffer) -> io::Result<Vec<InterfaceDetails>> {
     let mut result = match getifaddrs_details(sampled_at_ns) {
         Ok(details) => details,
         Err(error) if matches!(error.raw_os_error(), Some(1 | 13 | 38 | 93 | 97)) => {
@@ -255,13 +261,19 @@ fn interface_details(sampled_at_ns: u64) -> io::Result<Vec<InterfaceDetails>> {
             matches!(u16::from_ne_bytes([bytes[0], bytes[1]]), 1 | 772).then(|| bytes[2..8].try_into().unwrap())
         });
         let path = Path::new("/sys/class/net").join(std::ffi::OsStr::from_bytes(&record.name)).join("speed");
-        record.link_speed_bits_per_second = std::fs::read(path)
-            .ok()
-            .and_then(|v| crate::parse::number(v.trim_ascii()).ok())
-            .filter(|v| *v != 0 && *v != u64::from(u32::MAX))
-            .and_then(|mbps| mbps.checked_mul(1_000_000));
+        record.link_speed_bits_per_second = read_link_speed(&path, buffer);
     }
     Ok(result)
+}
+// Open on every refresh: a reused buffer is not a cache of the previous reading.
+// Driver absence, negative/unknown sentinels, malformed and oversized attributes remain unavailable.
+fn read_link_speed(path: &Path, buffer: &mut Buffer) -> Option<u64> {
+    let file = File::open(path).ok()?;
+    let value = buffer.read(&file).ok()?;
+    crate::parse::number(value.trim_ascii())
+        .ok()
+        .filter(|v| *v != 0 && *v != u64::from(u32::MAX))
+        .and_then(|mbps| mbps.checked_mul(1_000_000))
 }
 fn getifaddrs_details(sampled_at_ns: u64) -> io::Result<Vec<InterfaceDetails>> {
     let mut head = std::ptr::null_mut();
@@ -523,7 +535,10 @@ mod tests {
         let mut networks = Networks::with_proc_root(&root.0);
         write(100);
         networks.refresh_counters().unwrap();
-        networks.apply_details(&[details(1)]);
+        let metadata = details(1);
+        let original_name = metadata.name.as_ptr();
+        networks.apply_details(vec![metadata]);
+        assert_eq!(networks.get(b"eth0").unwrap().details.as_ref().unwrap().name.as_ptr(), original_name);
         write(200);
         networks.refresh_counters().unwrap();
         assert!(networks.get(b"eth0").unwrap().delta.is_none());
@@ -532,7 +547,7 @@ mod tests {
         assert_eq!(networks.get(b"eth0").unwrap().delta.unwrap().received_bytes, 100);
 
         // Reuse with larger counters must not look like continuous traffic.
-        networks.apply_details(&[details(2)]);
+        networks.apply_details(vec![details(2)]);
         write(1400);
         networks.refresh_counters().unwrap();
         let network = networks.get(b"eth0").unwrap();
@@ -542,7 +557,7 @@ mod tests {
         networks.refresh_counters().unwrap();
         assert_eq!(networks.get(b"eth0").unwrap().delta.unwrap().received_bytes, 100);
 
-        networks.apply_details(&[]);
+        networks.apply_details(Vec::new());
         write(2400);
         networks.refresh_counters().unwrap();
         assert!(networks.get(b"eth0").unwrap().delta.is_none());
@@ -551,10 +566,48 @@ mod tests {
         assert_eq!(networks.get(b"eth0").unwrap().delta.unwrap().received_bytes, 100);
 
         // Even a returning index must establish a fresh baseline after the gap.
-        networks.apply_details(&[details(2)]);
+        networks.apply_details(vec![details(2)]);
         write(3400);
         networks.refresh_counters().unwrap();
         assert!(networks.get(b"eth0").unwrap().delta.is_none());
+    }
+    #[test]
+    fn speed_buffer_reuses_storage_without_reusing_stale_or_invalid_values() {
+        struct Fixture(std::path::PathBuf);
+        impl Drop for Fixture {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_file(&self.0);
+            }
+        }
+        let fixture = Fixture(std::env::temp_dir().join(format!("zsys-link-speed-{}", std::process::id())));
+        let mut buffer = Buffer::new(256, 4096);
+        for (input, expected) in [
+            ("1000\n", Some(1_000_000_000)),
+            ("100\n", Some(100_000_000)),
+            ("-1\n", None),
+            ("0\n", None),
+            ("4294967295\n", None),
+            ("not-a-speed\n", None),
+            ("18446744073709551615\n", None),
+        ] {
+            std::fs::write(&fixture.0, input).unwrap();
+            assert_eq!(read_link_speed(&fixture.0, &mut buffer), expected);
+        }
+        std::fs::write(&fixture.0, vec![b'1'; 4097]).unwrap();
+        assert_eq!(read_link_speed(&fixture.0, &mut buffer), None);
+        // A read-limit failure must not poison subsequent valid observations.
+        std::fs::write(&fixture.0, b"10\n").unwrap();
+        assert_eq!(read_link_speed(&fixture.0, &mut buffer), Some(10_000_000));
+        std::fs::remove_file(&fixture.0).unwrap();
+        assert_eq!(read_link_speed(&fixture.0, &mut buffer), None);
+    }
+    #[test]
+    fn counters_only_does_not_create_a_details_buffer() {
+        let mut networks = Networks::new();
+        networks.refresh_counters().unwrap();
+        assert!(networks.detail_buffer.is_none());
+        networks.refresh_details().unwrap();
+        assert!(networks.detail_buffer.is_some());
     }
     #[test]
     fn native_network_abi_layouts() {

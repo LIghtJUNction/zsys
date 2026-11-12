@@ -29,8 +29,11 @@ jobs:
           item = json.loads(source.read_text())
           parent = subprocess.check_output(['git', 'rev-parse', 'HEAD^'], text=True).strip()
           if parent != item['base']: raise SystemExit('Base changed; refusing to overwrite work')
-          packed = base64.b64decode(item['patch'], validate=True)
-          patch = gzip.GzipFile(fileobj=io.BytesIO(packed)).read(4194305)
+          if 'patch_text' in item:
+              patch = item['patch_text'].encode('utf-8')
+          else:
+              packed = base64.b64decode(item['patch'], validate=True)
+              patch = gzip.GzipFile(fileobj=io.BytesIO(packed)).read(4194305)
           if len(patch) > 4194304: raise SystemExit('Patch too large')
           if hashlib.sha256(patch).hexdigest() != item['sha256']: raise SystemExit('Checksum mismatch')
           subprocess.run(['git', 'apply', '--check', '-'], input=patch, check=True)
