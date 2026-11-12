@@ -21,7 +21,9 @@ fn allocated(size: usize) {
 unsafe impl GlobalAlloc for Counting {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         let p = unsafe { System.alloc(layout) };
-        if !p.is_null() { allocated(layout.size()); }
+        if !p.is_null() {
+            allocated(layout.size());
+        }
         p
     }
     unsafe fn dealloc(&self, p: *mut u8, layout: Layout) {
@@ -42,7 +44,9 @@ unsafe impl GlobalAlloc for Counting {
 static ALLOC: Counting = Counting;
 
 fn measure(mut collect: impl FnMut(), samples: usize) {
-    for _ in 0..50 { collect(); }
+    for _ in 0..50 {
+        collect();
+    }
     let mut rows = Vec::with_capacity(samples);
     for _ in 0..samples {
         let live = LIVE.load(Relaxed);
@@ -52,8 +56,7 @@ fn measure(mut collect: impl FnMut(), samples: usize) {
         let start = Instant::now();
         collect();
         let ns = start.elapsed().as_nanos();
-        rows.push((ns, CALLS.load(Relaxed) - a, BYTES.load(Relaxed) - b,
-            PEAK.load(Relaxed).saturating_sub(live)));
+        rows.push((ns, CALLS.load(Relaxed) - a, BYTES.load(Relaxed) - b, PEAK.load(Relaxed).saturating_sub(live)));
     }
     let status = std::fs::read_to_string("/proc/self/status").unwrap();
     let rss = status.lines().find(|s| s.starts_with("VmHWM:")).unwrap_or("VmHWM: unavailable");
@@ -73,19 +76,25 @@ fn main() {
     match (implementation.as_str(), case) {
         ("zsys", "memory") => {
             let mut c = zsys::linux::LinuxCollector::new();
-            measure(|| {
-                let m = c.memory().unwrap();
-                assert!(m.total_bytes > 0 && m.available_bytes <= m.total_bytes);
-                black_box((m.total_bytes, m.available_bytes, m.swap_total_bytes, m.swap_free_bytes));
-            }, samples);
+            measure(
+                || {
+                    let m = c.memory().unwrap();
+                    assert!(m.total_bytes > 0 && m.available_bytes <= m.total_bytes);
+                    black_box((m.total_bytes, m.available_bytes, m.swap_total_bytes, m.swap_free_bytes));
+                },
+                samples,
+            );
         }
         ("sysinfo", "memory") => {
             let mut c = sysinfo::System::new().unwrap();
-            measure(|| {
-                c.refresh_memory();
-                assert!(c.total_memory() > 0 && c.available_memory() <= c.total_memory());
-                black_box((c.total_memory(), c.available_memory(), c.total_swap(), c.free_swap()));
-            }, samples);
+            measure(
+                || {
+                    c.refresh_memory();
+                    assert!(c.total_memory() > 0 && c.available_memory() <= c.total_memory());
+                    black_box((c.total_memory(), c.available_memory(), c.total_swap(), c.free_swap()));
+                },
+                samples,
+            );
         }
         _ => panic!("unsupported benchmark: {implementation} {case}"),
     }

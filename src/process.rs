@@ -18,7 +18,9 @@ impl ProcessCounters {
     /// Percentage of one logical CPU; multi-threaded processes may exceed 100%.
     /// The caller must verify identity and supply time BETWEEN successful samples.
     pub fn cpu_percent_since(self, old: Self, elapsed_ns: u64, ticks_per_second: u64) -> Option<f32> {
-        if elapsed_ns == 0 || ticks_per_second == 0 { return None; }
+        if elapsed_ns == 0 || ticks_per_second == 0 {
+            return None;
+        }
         let user = self.user_ticks.checked_sub(old.user_ticks)?;
         let system = self.system_ticks.checked_sub(old.system_ticks)?;
         let ticks = u128::from(user) + u128::from(system);

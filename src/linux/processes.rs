@@ -6,13 +6,18 @@ use std::os::fd::AsRawFd;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use super::io::{Buffer, Directory, ScanMode, clock_parameters, open_at, pid_path};
 use super::LinuxError;
+use super::io::{Buffer, Directory, ScanMode, clock_parameters, open_at, pid_path};
 use crate::parse::{fields, number, process_stat};
 use crate::process::{ProcessCounters, ProcessId, ProcessState};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Availability { Fresh, Inaccessible, Vanished, Invalid }
+pub enum Availability {
+    Fresh,
+    Inaccessible,
+    Vanished,
+    Invalid,
+}
 
 #[derive(Clone, Debug)]
 pub struct Process {
@@ -58,7 +63,9 @@ pub struct Processes {
 }
 
 impl Processes {
-    pub fn new() -> Result<Self, LinuxError> { Self::with_proc_root("/proc") }
+    pub fn new() -> Result<Self, LinuxError> {
+        Self::with_proc_root("/proc")
+    }
     pub fn with_proc_root(root: impl AsRef<Path>) -> Result<Self, LinuxError> {
         let (ticks, pages) = clock_parameters()?;
         Self::with_parameters(root, ticks, pages)
@@ -69,22 +76,46 @@ impl Processes {
             return Err(io::Error::new(io::ErrorKind::InvalidInput, "clock/page units must be nonzero").into());
         }
         Ok(Self {
-            directory: Directory::new(root.as_ref())?, buffer: Buffer::new(4096, 1024 * 1024),
-            pids: Vec::with_capacity(256), table: HashMap::with_capacity(256),
-            failures: Vec::new(), mode: if cfg!(any(target_arch = "x86_64", target_arch = "aarch64")) {
+            directory: Directory::new(root.as_ref())?,
+            buffer: Buffer::new(4096, 1024 * 1024),
+            pids: Vec::with_capacity(256),
+            table: HashMap::with_capacity(256),
+            failures: Vec::new(),
+            mode: if cfg!(any(target_arch = "x86_64", target_arch = "aarch64")) {
                 ScanMode::Native
-            } else { ScanMode::Std },
-            generation: 0, started: Instant::now(), ticks_per_second, page_size,
+            } else {
+                ScanMode::Std
+            },
+            generation: 0,
+            started: Instant::now(),
+            ticks_per_second,
+            page_size,
         })
     }
-    pub fn set_scan_mode(&mut self, mode: ScanMode) { self.mode = mode; }
-    pub fn iter(&self) -> impl Iterator<Item = &Process> { self.table.values() }
-    pub fn get(&self, pid: u32) -> Option<&Process> { self.table.get(&pid) }
-    pub fn len(&self) -> usize { self.table.len() }
-    pub fn is_empty(&self) -> bool { self.table.is_empty() }
-    pub fn failures(&self) -> &[ProcessFailure] { &self.failures }
-    pub fn ticks_per_second(&self) -> u64 { self.ticks_per_second }
-    pub fn page_size(&self) -> u64 { self.page_size }
+    pub fn set_scan_mode(&mut self, mode: ScanMode) {
+        self.mode = mode;
+    }
+    pub fn iter(&self) -> impl Iterator<Item = &Process> {
+        self.table.values()
+    }
+    pub fn get(&self, pid: u32) -> Option<&Process> {
+        self.table.get(&pid)
+    }
+    pub fn len(&self) -> usize {
+        self.table.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.table.is_empty()
+    }
+    pub fn failures(&self) -> &[ProcessFailure] {
+        &self.failures
+    }
+    pub fn ticks_per_second(&self) -> u64 {
+        self.ticks_per_second
+    }
+    pub fn page_size(&self) -> u64 {
+        self.page_size
+    }
 
     /// Enumerates first: a failed directory scan never deletes the existing process table.
     /// Unreadable but still enumerated PIDs retain explicitly stale records, not fake zeros.
@@ -122,8 +153,9 @@ impl Processes {
     /// Updates only this PID. Other PIDs are untouched, even if they have exited.
     pub fn refresh_pid(&mut self, pid: u32) -> Result<&Process, LinuxError> {
         if let Err(error) = self.update(pid) {
-            if classify(&error) == Availability::Vanished { self.table.remove(&pid); }
-            else if let Some(previous) = self.table.get_mut(&pid) {
+            if classify(&error) == Availability::Vanished {
+                self.table.remove(&pid);
+            } else if let Some(previous) = self.table.get_mut(&pid) {
                 previous.availability = classify(&error);
                 previous.cpu_percent = None;
             }
@@ -136,22 +168,33 @@ impl Processes {
         let mut path = [0; 64];
         let file = open_at(&self.directory.file, pid_path(pid, b"/stat", &mut path))?;
         let raw = process_stat(self.buffer.read(&file)?)?;
-        if raw.id.pid != pid { return Err(crate::parse::ParseError::InvalidRecord.into()); }
-        let memory_bytes = raw.counters.resident_pages.checked_mul(self.page_size)
-            .ok_or(crate::parse::ParseError::InvalidNumber)?;
+        if raw.id.pid != pid {
+            return Err(crate::parse::ParseError::InvalidRecord.into());
+        }
+        let memory_bytes =
+            raw.counters.resident_pages.checked_mul(self.page_size).ok_or(crate::parse::ParseError::InvalidNumber)?;
         let now = self.started.elapsed().as_nanos().min(u128::from(u64::MAX)) as u64;
         let mut added = false;
         let entry = self.table.entry(pid).or_insert_with(|| {
             added = true;
             Process {
-                id: raw.id, parent_pid: raw.parent_pid, name: Vec::with_capacity(raw.name.len()),
-                state: raw.state, threads: raw.threads, counters: raw.counters,
-                memory_bytes, cpu_percent: None, sampled_at_ns: now,
-                availability: Availability::Fresh, seen: self.generation,
+                id: raw.id,
+                parent_pid: raw.parent_pid,
+                name: Vec::with_capacity(raw.name.len()),
+                state: raw.state,
+                threads: raw.threads,
+                counters: raw.counters,
+                memory_bytes,
+                cpu_percent: None,
+                sampled_at_ns: now,
+                availability: Availability::Fresh,
+                seen: self.generation,
             }
         });
         let reused = !added && entry.id != raw.id;
-        entry.cpu_percent = if added || reused || entry.availability != Availability::Fresh { None } else {
+        entry.cpu_percent = if added || reused || entry.availability != Availability::Fresh {
+            None
+        } else {
             now.checked_sub(entry.sampled_at_ns)
                 .and_then(|elapsed| raw.counters.cpu_percent_since(entry.counters, elapsed, self.ticks_per_second))
         };
@@ -177,10 +220,15 @@ impl Processes {
         let stat = open_at(&directory, c"stat")?;
         let identity = process_stat(self.buffer.read(&stat)?)?.id;
         let mut result = ProcessDetails {
-            id: identity, executable: Detail::NotRequested, command_line: Detail::NotRequested,
-            user_ids: Detail::NotRequested, group_ids: Detail::NotRequested,
+            id: identity,
+            executable: Detail::NotRequested,
+            command_line: Detail::NotRequested,
+            user_ids: Detail::NotRequested,
+            group_ids: Detail::NotRequested,
         };
-        if options.executable { result.executable = detail(read_executable(&directory)); }
+        if options.executable {
+            result.executable = detail(read_executable(&directory));
+        }
         if options.command_line {
             result.command_line = detail((|| {
                 let file = open_at(&directory, c"cmdline")?;
@@ -193,7 +241,10 @@ impl Processes {
                 let bytes = self.buffer.read(&file)?;
                 parse_ids(bytes).map_err(|_| io::ErrorKind::InvalidData.into())
             }) {
-                Ok((uids, gids)) => { result.user_ids = Detail::Value(uids); result.group_ids = Detail::Value(gids); }
+                Ok((uids, gids)) => {
+                    result.user_ids = Detail::Value(uids);
+                    result.group_ids = Detail::Value(gids);
+                }
                 Err(e) => {
                     result.user_ids = Detail::Unavailable(e.kind());
                     result.group_ids = Detail::Unavailable(e.kind());
@@ -216,14 +267,27 @@ fn classify(error: &LinuxError) -> Availability {
 }
 
 #[derive(Clone, Copy, Debug, Default)]
-pub struct DetailOptions { pub executable: bool, pub command_line: bool, pub user: bool }
+pub struct DetailOptions {
+    pub executable: bool,
+    pub command_line: bool,
+    pub user: bool,
+}
 impl DetailOptions {
-    pub const fn all() -> Self { Self { executable: true, command_line: true, user: true } }
+    pub const fn all() -> Self {
+        Self { executable: true, command_line: true, user: true }
+    }
 }
 #[derive(Clone, Debug)]
-pub enum Detail<T> { NotRequested, Unavailable(io::ErrorKind), Value(T) }
+pub enum Detail<T> {
+    NotRequested,
+    Unavailable(io::ErrorKind),
+    Value(T),
+}
 fn detail<T>(value: io::Result<T>) -> Detail<T> {
-    match value { Ok(v) => Detail::Value(v), Err(e) => Detail::Unavailable(e.kind()) }
+    match value {
+        Ok(v) => Detail::Value(v),
+        Err(e) => Detail::Unavailable(e.kind()),
+    }
 }
 #[derive(Clone, Debug)]
 pub struct ProcessDetails {
@@ -240,7 +304,11 @@ fn parse_ids(input: &[u8]) -> Result<([u32; 4], [u32; 4]), crate::parse::ParseEr
     let mut gid = None;
     for line in input.split(|b| *b == b'\n') {
         let mut values = fields(line);
-        let slot = match values.next() { Some(b"Uid:") => &mut uid, Some(b"Gid:") => &mut gid, _ => continue };
+        let slot = match values.next() {
+            Some(b"Uid:") => &mut uid,
+            Some(b"Gid:") => &mut gid,
+            _ => continue,
+        };
         let mut ids = [0; 4];
         for id in &mut ids {
             *id = u32::try_from(number(values.next().ok_or(crate::parse::ParseError::MissingField)?)?)
@@ -259,13 +327,18 @@ fn read_executable(directory: &File) -> io::Result<PathBuf> {
     let mut buffer = vec![0; 256];
     loop {
         // SAFETY: valid descriptor/name and writable initialized storage. readlinkat does not NUL-terminate.
-        let len = unsafe { readlinkat(directory.as_raw_fd(), c"exe".as_ptr(), buffer.as_mut_ptr().cast(), buffer.len()) };
-        if len < 0 { return Err(io::Error::last_os_error()); }
+        let len =
+            unsafe { readlinkat(directory.as_raw_fd(), c"exe".as_ptr(), buffer.as_mut_ptr().cast(), buffer.len()) };
+        if len < 0 {
+            return Err(io::Error::last_os_error());
+        }
         if (len as usize) < buffer.len() {
             buffer.truncate(len as usize);
             return Ok(PathBuf::from(OsString::from_vec(buffer)));
         }
-        if buffer.len() >= 1024 * 1024 { return Err(io::ErrorKind::InvalidData.into()); }
+        if buffer.len() >= 1024 * 1024 {
+            return Err(io::ErrorKind::InvalidData.into());
+        }
         buffer.resize(buffer.len() * 2, 0);
     }
 }

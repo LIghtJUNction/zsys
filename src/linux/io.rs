@@ -33,7 +33,9 @@ impl Buffer {
                 Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
                 result => result?,
             };
-            if n == 0 { return Ok(&self.bytes[..used]); }
+            if n == 0 {
+                return Ok(&self.bytes[..used]);
+            }
             used += n;
             if used > self.limit {
                 return Err(io::Error::new(io::ErrorKind::InvalidData, "procfs record exceeds read limit"));
@@ -52,7 +54,9 @@ impl CachedFile {
         Self { path, file: None, buffer: Buffer::new(8192, 16 * 1024 * 1024) }
     }
     pub(crate) fn read(&mut self) -> io::Result<&[u8]> {
-        if self.file.is_none() { self.file = Some(File::open(&self.path)?); }
+        if self.file.is_none() {
+            self.file = Some(File::open(&self.path)?);
+        }
         self.buffer.read(self.file.as_ref().expect("opened above"))
     }
 }
@@ -60,7 +64,9 @@ impl CachedFile {
 pub(crate) fn open_at(directory: &File, name: &CStr) -> io::Result<File> {
     // SAFETY: name is NUL-terminated; no mode argument is needed without O_CREAT.
     let fd = unsafe { openat(directory.as_raw_fd(), name.as_ptr(), 0x80000) }; // O_RDONLY | O_CLOEXEC
-    if fd < 0 { return Err(io::Error::last_os_error()); }
+    if fd < 0 {
+        return Err(io::Error::last_os_error());
+    }
     // SAFETY: openat returned a new owned descriptor, transferred exactly once.
     Ok(unsafe { File::from_raw_fd(fd) })
 }
@@ -97,7 +103,9 @@ impl Directory {
         if mode == ScanMode::Std {
             for entry in std::fs::read_dir(&self.path)? {
                 let entry = entry?;
-                if let Some(pid) = numeric_pid(entry.file_name().as_bytes()) { out.push(pid); }
+                if let Some(pid) = numeric_pid(entry.file_name().as_bytes()) {
+                    out.push(pid);
+                }
             }
         } else {
             self.native_pids(out)?;
@@ -116,15 +124,18 @@ impl Directory {
         const GETDENTS64: c_long = 61;
         loop {
             // SAFETY: live directory fd and writable initialized buffer of the stated length.
-            let n = unsafe {
-                syscall(GETDENTS64, self.file.as_raw_fd(), self.entries.as_mut_ptr(), self.entries.len())
-            };
+            let n =
+                unsafe { syscall(GETDENTS64, self.file.as_raw_fd(), self.entries.as_mut_ptr(), self.entries.len()) };
             if n < 0 {
                 let e = io::Error::last_os_error();
-                if e.kind() == io::ErrorKind::Interrupted { continue; }
+                if e.kind() == io::ErrorKind::Interrupted {
+                    continue;
+                }
                 return Err(e);
             }
-            if n == 0 { return Ok(()); }
+            if n == 0 {
+                return Ok(());
+            }
             parse_dirents(&self.entries[..n as usize], out)?;
         }
     }
@@ -135,10 +146,14 @@ impl Directory {
 }
 
 fn numeric_pid(name: &[u8]) -> Option<u32> {
-    if name.is_empty() { return None; }
+    if name.is_empty() {
+        return None;
+    }
     let mut pid = 0u32;
     for &b in name {
-        if !b.is_ascii_digit() { return None; }
+        if !b.is_ascii_digit() {
+            return None;
+        }
         pid = pid.checked_mul(10)?.checked_add(u32::from(b - b'0'))?;
     }
     (pid != 0).then_some(pid)
@@ -146,12 +161,18 @@ fn numeric_pid(name: &[u8]) -> Option<u32> {
 
 fn parse_dirents(mut bytes: &[u8], out: &mut Vec<u32>) -> io::Result<()> {
     while !bytes.is_empty() {
-        if bytes.len() < 20 { return Err(io::ErrorKind::InvalidData.into()); }
+        if bytes.len() < 20 {
+            return Err(io::ErrorKind::InvalidData.into());
+        }
         let len = usize::from(u16::from_ne_bytes([bytes[16], bytes[17]]));
-        if len < 20 || len > bytes.len() { return Err(io::ErrorKind::InvalidData.into()); }
+        if len < 20 || len > bytes.len() {
+            return Err(io::ErrorKind::InvalidData.into());
+        }
         let name = &bytes[19..len];
         let end = name.iter().position(|b| *b == 0).ok_or(io::ErrorKind::InvalidData)?;
-        if let Some(pid) = numeric_pid(&name[..end]) { out.push(pid); }
+        if let Some(pid) = numeric_pid(&name[..end]) {
+            out.push(pid);
+        }
         bytes = &bytes[len..];
     }
     Ok(())
@@ -166,7 +187,9 @@ pub(crate) fn pid_path<'a>(pid: u32, suffix: &[u8], storage: &'a mut [u8; 64]) -
         pos -= 1;
         digits[pos] = b'0' + (value % 10) as u8;
         value /= 10;
-        if value == 0 { break; }
+        if value == 0 {
+            break;
+        }
     }
     let count = digits.len() - pos;
     storage[..count].copy_from_slice(&digits[pos..]);

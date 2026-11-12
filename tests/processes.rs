@@ -7,7 +7,8 @@ static NEXT: AtomicU64 = AtomicU64::new(0);
 struct Fixture(PathBuf);
 impl Fixture {
     fn new() -> Self {
-        let p = std::env::temp_dir().join(format!("zsys-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
+        let p =
+            std::env::temp_dir().join(format!("zsys-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
         fs::create_dir_all(&p).unwrap();
         Self(p)
     }
@@ -15,12 +16,18 @@ impl Fixture {
         fs::create_dir_all(self.0.join(pid.to_string())).unwrap();
         // stat fields 3..24: state, ppid, nine skipped fields, user, system,
         // cutime,cstime,priority,nice,threads,itrealvalue,starttime,vsize,rss.
-        fs::write(self.0.join(format!("{pid}/stat")), format!(
-            "{pid} (test (worker)) S 1 0 0 0 0 0 0 0 0 0 {user} 0 0 0 20 0 2 0 {start} 8192 3\n"
-        )).unwrap();
+        fs::write(
+            self.0.join(format!("{pid}/stat")),
+            format!("{pid} (test (worker)) S 1 0 0 0 0 0 0 0 0 0 {user} 0 0 0 20 0 2 0 {start} 8192 3\n"),
+        )
+        .unwrap();
     }
 }
-impl Drop for Fixture { fn drop(&mut self) { let _ = fs::remove_dir_all(&self.0); } }
+impl Drop for Fixture {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
 #[test]
 fn lifecycle_reuse_and_inaccessible_records_are_not_conflated() {
     let f = Fixture::new();
@@ -89,11 +96,19 @@ fn real_process_details_preserve_identity() {
 fn collectors_are_send_and_sync() {
     fn assert_send_sync<T: Send + Sync>() {}
     assert_send_sync::<Processes>();
-    let threads: Vec<_> = (0..4).map(|_| std::thread::spawn(|| {
-        let mut p = Processes::new().unwrap();
-        for _ in 0..20 { p.refresh_pid(std::process::id()).unwrap(); }
-    })).collect();
-    for thread in threads { thread.join().unwrap(); }
+    let threads: Vec<_> = (0..4)
+        .map(|_| {
+            std::thread::spawn(|| {
+                let mut p = Processes::new().unwrap();
+                for _ in 0..20 {
+                    p.refresh_pid(std::process::id()).unwrap();
+                }
+            })
+        })
+        .collect();
+    for thread in threads {
+        thread.join().unwrap();
+    }
 }
 #[test]
 fn repeated_refresh_and_child_exit() {
@@ -104,7 +119,9 @@ fn repeated_refresh_and_child_exit() {
     let _ = child.kill();
     let _ = child.wait();
     assert_eq!(result.unwrap(), pid);
-    for _ in 0..100 { p.refresh_pid(std::process::id()).unwrap(); }
+    for _ in 0..100 {
+        p.refresh_pid(std::process::id()).unwrap();
+    }
     assert!(p.refresh_pid(pid).is_err());
     assert!(p.get(pid).is_none());
 }
