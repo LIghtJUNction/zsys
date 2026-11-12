@@ -96,5 +96,6 @@ jobs:
             git push origin "refs/tags/$TAG"
           fi
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" "target/package/zsys-$RELEASE_VERSION.crate" --verify-tag --title "zsys $RELEASE_VERSION" --generate-notes
+            gh release create "$TAG" --verify-tag --title "zsys $RELEASE_VERSION" --generate-notes
           fi
+          gh release upload "$TAG" "target/package/zsys-$RELEASE_VERSION.crate" --clobber

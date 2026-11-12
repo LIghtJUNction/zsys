@@ -13,7 +13,14 @@ cargo run --release --example basic
 cargo run --release --example cadence
 ```
 
-For a local application, add `zsys = { path = "../zsys" }` under `[dependencies]`. Published versions and release artifacts are listed on [crates.io](https://crates.io/crates/zsys) and [GitHub Releases](https://github.com/LIghtJUNction/zsys/releases).
+The intended initial registry version is `0.1.0`:
+
+```toml
+[dependencies]
+zsys = "0.1"
+```
+
+Check [crates.io](https://crates.io/crates/zsys) and [GitHub Releases](https://github.com/LIghtJUNction/zsys/releases) for completed publications. Before publication, or when developing from this checkout, use `zsys = { path = "../zsys" }` instead.
 
 ```rust
 use std::time::Duration;
@@ -91,7 +98,7 @@ Collectors reuse retained storage as the sampling workload stabilizes. New objec
 
 ```toml
 [dependencies]
-zsys = { path = "../zsys", default-features = false }
+zsys = { version = "0.1", default-features = false }
 ```
 
 | Feature | Meaning |

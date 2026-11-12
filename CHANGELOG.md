@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 0.1.0 candidate
+## 0.1.0
 
 - Portable `no_std` CPU, memory, process, disk and network models, parsers, delta calculations, and caller-driven cadence.
 - Independent Linux CPU, memory, retained process table, filesystem capacity, mount discovery, block I/O and network collectors.
