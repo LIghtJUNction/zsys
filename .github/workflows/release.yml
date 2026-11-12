@@ -3,54 +3,98 @@ on:
   workflow_dispatch:
     inputs:
       bump:
-        description: Version bump
+        description: SemVer bump (none publishes the checked-in version)
         required: true
+        default: patch
         type: choice
-        options: [patch, minor, major]
+        options: [none, patch, minor, major]
+  push:
+    branches: [main]
+    paths: ['Cargo.toml', '.github/workflows/release.yml']
 permissions:
   contents: write
+concurrency:
+  group: release-zsys
+  cancel-in-progress: false
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  prepare:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    outputs:
+      sha: ${{ steps.version.outputs.sha }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
-      - name: Bump version
-        shell: bash
-        run: |
-          python3 - "${{ inputs.bump }}" <<'PY'
-          import pathlib, re, sys
-          bump = sys.argv[1]
-          p = pathlib.Path("Cargo.toml")
-          s = p.read_text()
-          m = re.search(r'(?m)^version = "(\d+)\.(\d+)\.(\d+)"$', s)
-          if not m: raise SystemExit("package version not found")
-          major, minor, patch = map(int, m.groups())
-          if bump == "major": major, minor, patch = major + 1, 0, 0
-          elif bump == "minor": minor, patch = minor + 1, 0
-          else: patch += 1
-          p.write_text(s[:m.start()] + f'version = "{major}.{minor}.{patch}"' + s[m.end():])
-          PY
-      - run: cargo fmt --all
-      - run: cargo test --all-features
-      - run: cargo check --no-default-features
-      - run: cargo check --all-features
-      - run: cargo package --locked
-      - name: Publish to crates.io
+      - name: Update version and both lockfiles
+        id: version
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish --locked
-      - name: Commit and tag release
+          BUMP: ${{ inputs.bump || 'none' }}
+        run: |
+          python3 scripts/test-version.py
+          VERSION=$(python3 scripts/version.py "$BUMP")
+          python3 scripts/check-package.py
+          RELEASE_SHA=$(git rev-parse HEAD)
+          if ! git diff --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add Cargo.toml Cargo.lock benchmarks/Cargo.lock
+            git fetch origin main
+            REMOTE_SHA=$(git rev-parse origin/main)
+            if test "$REMOTE_SHA" = "$RELEASE_SHA"; then
+              git commit -m "chore(release): v$VERSION"
+              git push origin HEAD:main
+              RELEASE_SHA=$(git rev-parse HEAD)
+            elif test "$(git rev-parse "$REMOTE_SHA^{tree}")" = "$(git write-tree)" && test "$(git rev-parse "$REMOTE_SHA^")" = "$RELEASE_SHA"; then
+              # A rerun after the first prepare job already pushed this exact bump.
+              RELEASE_SHA=$REMOTE_SHA
+            else
+              echo 'main changed; dispatch the release again from its current head'
+              exit 1
+            fi
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "sha=$RELEASE_SHA" >> "$GITHUB_OUTPUT"
+  validate:
+    needs: prepare
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.prepare.outputs.sha }}
+    permissions:
+      contents: read
+  publish:
+    needs: [prepare, validate]
+    runs-on: ubuntu-24.04
+    env:
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      RELEASE_SHA: ${{ needs.prepare.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo package --locked
+      - name: Publish exact verified package
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN || secrets.CARGO_REGISTY_TOKEN }}
+        run: |
+          python3 scripts/publish.py
+      - name: Tag and generate GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add Cargo.toml Cargo.lock
-          git commit -m "chore(release): v$VERSION"
-          git tag "v$VERSION"
-          git push origin HEAD:main --tags
-          gh release create "v$VERSION" --generate-notes
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          TAG="v$RELEASE_VERSION"
+          if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
+            test "$(git rev-parse "$TAG^{commit}")" = "$RELEASE_SHA"
+          else
+            git tag -a "$TAG" -m "zsys $RELEASE_VERSION" "$RELEASE_SHA"
+            git push origin "refs/tags/$TAG"
+          fi
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" "target/package/zsys-$RELEASE_VERSION.crate" --verify-tag --title "zsys $RELEASE_VERSION" --generate-notes
+          fi

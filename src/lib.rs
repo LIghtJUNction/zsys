@@ -3,6 +3,28 @@
 //!
 //! Counter models and parsers work without `std` or an allocator.
 //! Linux collection is enabled by `std`; other targets currently expose models only.
+//!
+//! ```
+//! use zsys::cpu::CpuTimes;
+//! let before = CpuTimes { user: 100, idle: 900, ..CpuTimes::default() };
+//! let after = CpuTimes { user: 150, idle: 950, ..CpuTimes::default() };
+//! assert_eq!(after.busy_percent_since(before), Some(50.0));
+//! ```
+//!
+//! ```no_run
+//! # #[cfg(all(feature = "std", target_os = "linux"))]
+//! # fn main() -> Result<(), zsys::linux::LinuxError> {
+//! let mut system = zsys::System::new();
+//! system.refresh_memory()?;
+//! system.refresh_processes()?;
+//! for process in system.processes() {
+//!     println!("{}: {} bytes", process.id.pid, process.memory_bytes);
+//! }
+//! # Ok(())
+//! # }
+//! # #[cfg(not(all(feature = "std", target_os = "linux")))]
+//! # fn main() {}
+//! ```
 
 #[cfg(feature = "alloc")]
 extern crate alloc;

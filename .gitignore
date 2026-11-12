@@ -3,3 +3,4 @@
 criterion/
 /benchmarks/target
 /benchmark-results
+__pycache__/

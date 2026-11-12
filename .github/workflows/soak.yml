@@ -1,0 +1,32 @@
+name: Extended resource soak
+on:
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: Duration in seconds (60 to 3600)
+        type: number
+        default: 600
+  schedule:
+    - cron: '17 4 * * 0'
+permissions:
+  contents: read
+jobs:
+  soak:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Keep one collector alive throughout the resource soak
+        env:
+          SOAK_SECONDS: ${{ inputs.seconds || 600 }}
+        run: |
+          python3 - <<'PY'
+          import os, subprocess
+          seconds = int(os.environ['SOAK_SECONDS'])
+          if not 60 <= seconds <= 3600:
+              raise SystemExit('seconds must be in 60..3600')
+          os.environ['ZSYS_SOAK_SECONDS'] = str(seconds)
+          subprocess.run(['cargo', 'test', '--locked', '--release', '--test', 'process_resources', '--', '--nocapture'], check=True)
+          subprocess.run(['cargo', 'test', '--locked', '--release', '--test', 'processes'], check=True)
+          PY
