@@ -1,0 +1,27 @@
+name: Format development branch
+on:
+  push:
+    branches: ['work/**']
+permissions:
+  contents: write
+jobs:
+  format:
+    if: contains(github.event.head_commit.message, '[format]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Commit formatting without changing semantics
+        run: |
+          cargo fmt --all
+          if test -z "$(git status --porcelain)"; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add '*.rs'
+          git commit -m 'style: apply rustfmt to development changes'
+          git push origin HEAD:${{ github.ref_name }}
+      - run: cargo test --locked --all-features

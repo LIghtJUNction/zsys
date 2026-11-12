@@ -1,9 +1,14 @@
 name: CI
 on:
   push:
-    branches: [main]
+    branches: [main, 'work/**']
   pull_request:
   workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     strategy:
@@ -16,16 +21,16 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - run: cargo fmt --all
-      - run: cargo check --no-default-features
-      - run: cargo check --all-features
-      - run: cargo test --all-features
-      - run: cargo clippy --all-targets --all-features -- -D warnings
-      - run: cargo doc --no-deps --all-features
+      - run: cargo fmt --all -- --check
+      - run: cargo test --locked --no-default-features
+      - run: cargo check --locked --no-default-features --features alloc
+      - run: cargo test --locked --all-features
+      - run: cargo clippy --locked --all-targets --all-features -- -D warnings
+      - run: cargo doc --locked --no-deps --all-features
   msrv:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@1.95.0
-      - run: cargo check --no-default-features
-      - run: cargo test --all-features
+      - run: cargo test --locked --no-default-features
+      - run: cargo test --locked --all-features
