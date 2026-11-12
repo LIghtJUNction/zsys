@@ -55,6 +55,7 @@ pub struct ProcessFailure {
 pub struct Processes {
     directory: Directory,
     buffer: Buffer,
+    detail_buffer: Option<Buffer>,
     pids: Vec<u32>,
     table: HashMap<u32, Process>,
     failures: Vec<ProcessFailure>,
@@ -81,10 +82,11 @@ impl Processes {
         Ok(Self {
             directory: Directory::new(root.as_ref())?,
             buffer: Buffer::new(4096, 1024 * 1024),
+            detail_buffer: None,
             pids: Vec::with_capacity(256),
             table: HashMap::with_capacity(256),
             failures: Vec::new(),
-            mode: if cfg!(any(target_arch = "x86_64", target_arch = "aarch64")) {
+            mode: if cfg!(all(target_pointer_width = "64", any(target_arch = "x86_64", target_arch = "aarch64"))) {
                 ScanMode::Native
             } else {
                 ScanMode::Std
@@ -246,7 +248,7 @@ impl Processes {
         if options.command_line {
             result.command_line = detail((|| {
                 let file = open_at(&directory, c"cmdline")?;
-                let mut bytes = Buffer::new(4096, 16 * 1024 * 1024);
+                let bytes = self.detail_buffer.get_or_insert_with(|| Buffer::new(4096, 16 * 1024 * 1024));
                 Ok(bytes.read(&file)?.to_vec())
             })());
         }

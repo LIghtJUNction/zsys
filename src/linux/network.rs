@@ -348,6 +348,18 @@ unsafe fn decode_address(pointer: *const c_void) -> Option<(IpAddr, u32)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    #[cfg(target_pointer_width = "64")]
+    fn native_socket_layout_matches_the_checked_c_contract() {
+        assert_eq!(std::mem::size_of::<IfAddrs>(), 56);
+        assert_eq!(std::mem::offset_of!(IfAddrs, flags), 16);
+        assert_eq!(std::mem::offset_of!(IfAddrs, address), 24);
+        assert_eq!(std::mem::size_of::<Address4>(), 16);
+        assert_eq!(std::mem::size_of::<Address6>(), 28);
+        assert_eq!(std::mem::offset_of!(Address6, scope), 24);
+        assert_eq!(std::mem::size_of::<LinkAddress>(), 20);
+        assert_eq!(std::mem::offset_of!(LinkAddress, address), 12);
+    }
     fn details(index: u32) -> InterfaceDetails {
         InterfaceDetails {
             name: b"test0".to_vec(),

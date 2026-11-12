@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 unsafe extern "C" {
     fn openat(dirfd: c_int, path: *const c_char, flags: c_int, ...) -> c_int;
     fn sysconf(name: c_int) -> c_long;
-    #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
+    #[cfg(all(target_pointer_width = "64", any(target_arch = "x86_64", target_arch = "aarch64")))]
     fn syscall(number: c_long, ...) -> c_long;
 }
 
@@ -119,7 +119,7 @@ impl Directory {
         out.dedup();
         Ok(())
     }
-    #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
+    #[cfg(all(target_pointer_width = "64", any(target_arch = "x86_64", target_arch = "aarch64")))]
     fn native_pids(&mut self, out: &mut Vec<u32>) -> io::Result<()> {
         use std::io::{Seek, SeekFrom};
         self.file.seek(SeekFrom::Start(0))?;
@@ -144,7 +144,7 @@ impl Directory {
             parse_dirents(&self.entries[..n as usize], out)?;
         }
     }
-    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+    #[cfg(not(all(target_pointer_width = "64", any(target_arch = "x86_64", target_arch = "aarch64"))))]
     fn native_pids(&mut self, _out: &mut Vec<u32>) -> io::Result<()> {
         Err(io::Error::new(io::ErrorKind::Unsupported, "select ScanMode::Std on this architecture"))
     }

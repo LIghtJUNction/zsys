@@ -1,6 +1,7 @@
 //! Linux collectors using procfs and native operating-system interfaces.
 mod cpu_memory;
 mod disk;
+pub mod hardware;
 mod io;
 mod network;
 mod processes;

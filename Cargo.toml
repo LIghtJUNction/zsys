@@ -7,6 +7,7 @@ description = "A low-overhead, incremental system information engine"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/LIghtJUNction/zsys"
 readme = "README.md"
+include = ["src/**", "tests/**", "examples/**", "Cargo.toml", "Cargo.lock", "README.md", "BENCHMARKS.md", "docs/API.md", "CHANGELOG.md", "LICENSE-*"]
 keywords = ["system", "procfs", "monitoring", "performance"]
 categories = ["os", "hardware-support"]
 
@@ -17,3 +18,7 @@ std = ["alloc"]
 
 [lib]
 path = "src/lib.rs"
+
+[[test]]
+name = "process_resources"
+harness = false

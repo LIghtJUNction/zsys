@@ -251,3 +251,27 @@ fn rapid_creation_and_exit_do_not_leave_records() {
         assert!(p.get(pid).is_none());
     }
 }
+
+#[test]
+fn ten_thousand_fixture_processes_reconcile_without_real_process_spawning() {
+    let fixture = Fixture::new();
+    for pid in 1..=10_000 {
+        fixture.process(pid, u64::from(pid), 1);
+    }
+    let mut processes = Processes::with_parameters(&fixture.0, 100, 4096).unwrap();
+    let first = processes.refresh().unwrap();
+    assert_eq!(first.added, 10_000);
+    assert_eq!(first.failed, 0);
+    let before = processes.get(5000).unwrap().name.as_ptr();
+    let second = processes.refresh().unwrap();
+    assert_eq!(second.updated, 10_000);
+    assert_eq!(second.added, 0);
+    assert_eq!(processes.get(5000).unwrap().name.as_ptr(), before);
+    fs::remove_dir_all(fixture.0.join("5000")).unwrap();
+    fixture.process(10_000, 20_000, 0);
+    let third = processes.refresh().unwrap();
+    assert_eq!(third.updated, 9999);
+    assert_eq!(third.removed, 1);
+    assert_eq!(third.reused, 1);
+    assert_eq!(processes.get(10_000).unwrap().cpu_percent, None);
+}
