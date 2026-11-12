@@ -1,0 +1,31 @@
+name: Benchmark
+on:
+  push:
+    branches: [main, 'work/**']
+    paths: ['src/**', 'benchmarks/**', '.github/workflows/benchmark.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Verify exact comparison dependency
+        run: |
+          cargo build --release --manifest-path benchmarks/Cargo.toml
+          cargo tree --manifest-path benchmarks/Cargo.toml
+          cargo tree --edges normal
+      - name: Run paired measurements
+        run: python3 benchmarks/run.py --samples 1000
+      - name: Retain raw evidence and resolved lockfile
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-${{ github.sha }}
+          path: |
+            benchmark-results/
+            benchmarks/Cargo.lock
+          retention-days: 90
