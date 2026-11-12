@@ -71,6 +71,12 @@ fn repeated_sampling_has_no_hot_allocations_or_retained_resources() {
         assert!(seconds > 0, "ZSYS_SOAK_SECONDS must be positive");
         Duration::from_secs(seconds)
     });
+    for limit in [0, 1] {
+        exercise(soak, limit);
+    }
+}
+
+fn exercise(soak: Option<Duration>, limit: usize) {
     let pid = std::process::id();
     // Initialize the standard library and kernel paths before measuring owned resources.
     let mut warm = Processes::new().unwrap();
@@ -80,6 +86,7 @@ fn repeated_sampling_has_no_hot_allocations_or_retained_resources() {
     let baseline_bytes = counters().bytes;
     for _ in 0..100 {
         let mut collector = Processes::new().unwrap();
+        collector.set_directory_cache_limit(limit);
         collector.refresh_pid(pid).unwrap();
         drop(collector);
     }
@@ -87,8 +94,12 @@ fn repeated_sampling_has_no_hot_allocations_or_retained_resources() {
     assert_eq!(descriptors(), baseline_fds, "collector descriptors must be closed on drop");
 
     let mut collector = Processes::new().unwrap();
+    collector.set_directory_cache_limit(limit);
     collector.refresh_pid(pid).unwrap();
+    assert_eq!(collector.cached_directory_count(), limit);
     let active_fds = descriptors();
+    // One proc-root descriptor and at most one retained PID directory.
+    assert_eq!(active_fds, baseline_fds + 1 + limit);
     let bytes = counters().bytes;
     let started = Instant::now();
     let mut samples = 0u64;
@@ -111,11 +122,13 @@ fn repeated_sampling_has_no_hot_allocations_or_retained_resources() {
         }
     }
     let elapsed = started.elapsed();
+    collector.set_directory_cache_limit(0);
+    assert_eq!(descriptors(), baseline_fds + 1);
     drop(collector);
     assert_eq!(counters().bytes, baseline_bytes);
     assert_eq!(descriptors(), baseline_fds);
     eprintln!(
-        "process resource soak: samples={samples}, elapsed_seconds={:.3}, samples_per_second={:.0}, hot_allocations=0, retained_growth_bytes=0, descriptor_growth=0",
+        "process resource soak: directory_cache_limit={limit}, samples={samples}, elapsed_seconds={:.3}, samples_per_second={:.0}, hot_allocations=0, retained_growth_bytes=0, descriptor_growth=0",
         elapsed.as_secs_f64(),
         samples as f64 / elapsed.as_secs_f64()
     );

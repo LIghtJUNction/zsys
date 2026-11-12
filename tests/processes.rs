@@ -301,3 +301,134 @@ fn statm_permission_loss_is_reported_without_fake_zero_memory() {
     fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
     assert_eq!(p.refresh_pid(42).unwrap().availability, Availability::Fresh);
 }
+
+#[test]
+fn directory_cache_budget_is_explicit_and_does_not_change_snapshots() {
+    let f = Fixture::new();
+    for pid in 1..=4 {
+        f.process(pid, pid as u64 * 10, 1);
+    }
+    let mut p = Processes::with_parameters(&f.0, 100, 4096).unwrap();
+    assert_eq!(p.directory_cache_limit(), 0);
+    p.refresh().unwrap();
+    assert_eq!(p.cached_directory_count(), 0);
+    p.set_directory_cache_limit(2);
+    p.refresh().unwrap();
+    assert_eq!(p.cached_directory_count(), 2);
+    let copied = p.get(1).unwrap().clone();
+    let timestamp = copied.sampled_at_ns;
+    p.enumerate_pids().unwrap();
+    assert_eq!(p.cached_directory_count(), 2);
+    assert_eq!(p.get(1).unwrap().sampled_at_ns, timestamp);
+    // Reopening children sees a replaced statm; caching data-file FDs would not.
+    fs::rename(f.0.join("1/statm"), f.0.join("1/old-statm")).unwrap();
+    fs::write(f.0.join("1/statm"), b"40 17 0 0 0 0 0\n").unwrap();
+    assert_eq!(p.refresh_pid(1).unwrap().memory_bytes, 17 * 4096);
+    assert_eq!(copied.memory_bytes, 3 * 4096);
+    p.set_directory_cache_limit(1);
+    assert_eq!(p.cached_directory_count(), 0);
+    assert_eq!(p.len(), 4);
+    p.refresh().unwrap();
+    assert_eq!(p.cached_directory_count(), 1);
+    p.set_directory_cache_limit(0);
+    p.refresh().unwrap();
+    assert_eq!(p.cached_directory_count(), 0);
+}
+
+#[test]
+fn cached_directory_exit_replacement_and_invalid_samples_reset_state() {
+    let f = Fixture::new();
+    f.process(42, 100, 10);
+    let mut p = Processes::with_parameters(&f.0, 100, 4096).unwrap();
+    p.set_directory_cache_limit(1);
+    p.refresh().unwrap();
+    assert_eq!(p.cached_directory_count(), 1);
+    // Removing the old directory models a dead procfs directory: it can no
+    // longer open its children. Reuse must reopen before reading BOTH files.
+    fs::remove_dir_all(f.0.join("42")).unwrap();
+    f.process(42, 200, 2);
+    fs::write(f.0.join("42/statm"), b"30 21 0 0 0 0 0\n").unwrap();
+    assert_eq!(p.refresh().unwrap().reused, 1);
+    let current = p.get(42).unwrap();
+    assert_eq!(current.id.start_time_ticks, 200);
+    assert_eq!(current.memory_bytes, 21 * 4096);
+    assert_eq!(current.cpu_percent, None);
+    fs::write(f.0.join("42/stat"), b"42 (incomplete) S").unwrap();
+    assert!(p.refresh_pid(42).is_err());
+    assert_eq!(p.cached_directory_count(), 0);
+    assert_eq!(p.get(42).unwrap().availability, Availability::Invalid);
+    f.process(42, 200, 3);
+    assert_eq!(p.refresh_pid(42).unwrap().cpu_percent, None);
+    assert_eq!(p.cached_directory_count(), 1);
+    fs::remove_dir_all(f.0.join("42")).unwrap();
+    assert_eq!(p.refresh().unwrap().removed, 1);
+    assert_eq!(p.cached_directory_count(), 0);
+}
+
+#[test]
+fn cached_targeted_refresh_keeps_other_pids_and_failed_enumeration_keeps_cache() {
+    let f = Fixture::new();
+    f.process(1, 10, 1);
+    f.process(2, 20, 1);
+    let mut p = Processes::with_parameters(&f.0, 100, 4096).unwrap();
+    p.set_directory_cache_limit(2);
+    p.set_scan_mode(ScanMode::Std);
+    p.refresh().unwrap();
+    let moved = f.0.with_extension("cached-moved");
+    fs::rename(&f.0, &moved).unwrap();
+    let result = p.refresh();
+    fs::rename(&moved, &f.0).unwrap();
+    assert!(result.is_err());
+    assert_eq!(p.cached_directory_count(), 2);
+    fs::remove_dir_all(f.0.join("2")).unwrap();
+    p.refresh_pid(1).unwrap();
+    assert!(p.get(2).is_some());
+    assert_eq!(p.cached_directory_count(), 2);
+    assert!(p.refresh_pid(2).is_err());
+    assert!(p.get(2).is_none());
+    assert_eq!(p.cached_directory_count(), 1);
+}
+
+#[test]
+fn cached_directories_do_not_bypass_file_permission_loss() {
+    use std::os::unix::fs::PermissionsExt;
+    let f = Fixture::new();
+    f.process(42, 100, 10);
+    let mut p = Processes::with_parameters(&f.0, 100, 4096).unwrap();
+    p.set_directory_cache_limit(1);
+    for name in ["statm", "stat"] {
+        p.refresh_pid(42).unwrap();
+        assert_eq!(p.cached_directory_count(), 1);
+        let path = f.0.join("42").join(name);
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o0)).unwrap();
+        let denied = fs::File::open(&path).is_err_and(|e| e.kind() == std::io::ErrorKind::PermissionDenied);
+        if denied {
+            assert!(p.refresh_pid(42).is_err());
+            assert_eq!(p.cached_directory_count(), 0);
+            assert_eq!(p.get(42).unwrap().availability, Availability::Inaccessible);
+        }
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
+        p.refresh_pid(42).unwrap();
+        assert_eq!(p.get(42).unwrap().availability, Availability::Fresh);
+    }
+}
+
+#[test]
+fn cached_real_process_churn_closes_exited_entries() {
+    let mut p = Processes::new().unwrap();
+    p.set_directory_cache_limit(4);
+    for _ in 0..32 {
+        let mut child = std::process::Command::new("sleep").arg("60").spawn().unwrap();
+        let pid = child.id();
+        let initial = p.refresh_pid(pid).map(|record| record.id);
+        let cached = p.cached_directory_count();
+        // Clean up before asserting so a failed test never strands a child.
+        let _ = child.kill();
+        child.wait().unwrap();
+        assert_eq!(initial.unwrap().pid, pid);
+        assert_eq!(cached, 1);
+        assert!(p.refresh_pid(pid).is_err());
+        assert!(p.is_empty());
+        assert_eq!(p.cached_directory_count(), 0);
+    }
+}
