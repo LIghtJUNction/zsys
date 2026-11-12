@@ -23,17 +23,43 @@ pub struct NetworkCounters {
 }
 impl NetworkCounters {
     fn values(self) -> [u64; 16] {
-        [self.received_bytes, self.received_packets, self.received_errors, self.received_drops,
-         self.received_fifo, self.received_frame, self.received_compressed, self.multicast,
-         self.transmitted_bytes, self.transmitted_packets, self.transmitted_errors, self.transmitted_drops,
-         self.transmitted_fifo, self.collisions, self.transmitted_carrier, self.transmitted_compressed]
+        [
+            self.received_bytes,
+            self.received_packets,
+            self.received_errors,
+            self.received_drops,
+            self.received_fifo,
+            self.received_frame,
+            self.received_compressed,
+            self.multicast,
+            self.transmitted_bytes,
+            self.transmitted_packets,
+            self.transmitted_errors,
+            self.transmitted_drops,
+            self.transmitted_fifo,
+            self.collisions,
+            self.transmitted_carrier,
+            self.transmitted_compressed,
+        ]
     }
     fn from_values(v: [u64; 16]) -> Self {
         Self {
-            received_bytes: v[0], received_packets: v[1], received_errors: v[2], received_drops: v[3],
-            received_fifo: v[4], received_frame: v[5], received_compressed: v[6], multicast: v[7],
-            transmitted_bytes: v[8], transmitted_packets: v[9], transmitted_errors: v[10], transmitted_drops: v[11],
-            transmitted_fifo: v[12], collisions: v[13], transmitted_carrier: v[14], transmitted_compressed: v[15],
+            received_bytes: v[0],
+            received_packets: v[1],
+            received_errors: v[2],
+            received_drops: v[3],
+            received_fifo: v[4],
+            received_frame: v[5],
+            received_compressed: v[6],
+            multicast: v[7],
+            transmitted_bytes: v[8],
+            transmitted_packets: v[9],
+            transmitted_errors: v[10],
+            transmitted_drops: v[11],
+            transmitted_fifo: v[12],
+            collisions: v[13],
+            transmitted_carrier: v[14],
+            transmitted_compressed: v[15],
         }
     }
     /// `None` indicates counter reset or wrap. Interface identity must be checked by the caller.
@@ -47,15 +73,22 @@ impl NetworkCounters {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct RawNetwork<'a> { pub name: &'a [u8], pub counters: NetworkCounters }
+pub struct RawNetwork<'a> {
+    pub name: &'a [u8],
+    pub counters: NetworkCounters,
+}
 
 pub fn parse_net_dev_line(line: &[u8]) -> Result<RawNetwork<'_>, ParseError> {
     let colon = line.iter().rposition(|b| *b == b':').ok_or(ParseError::InvalidRecord)?;
     let name = line[..colon].trim_ascii();
-    if name.is_empty() { return Err(ParseError::InvalidRecord); }
+    if name.is_empty() {
+        return Err(ParseError::InvalidRecord);
+    }
     let mut it = fields(&line[colon + 1..]);
     let mut values = [0; 16];
-    for value in &mut values { *value = number(it.next().ok_or(ParseError::MissingField)?)?; }
+    for value in &mut values {
+        *value = number(it.next().ok_or(ParseError::MissingField)?)?;
+    }
     Ok(RawNetwork { name, counters: NetworkCounters::from_values(values) })
 }
 

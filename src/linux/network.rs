@@ -1,13 +1,17 @@
 //! Traffic counters are separate from address/flag discovery; both are explicitly refreshed.
+use super::LinuxError;
+use super::io::CachedFile;
+use crate::{
+    Sample,
+    network::{NetworkCounters, parse_net_dev_line},
+    parse::ParseError,
+};
 use std::collections::HashMap;
 use std::ffi::{CStr, c_char, c_int, c_uint, c_void};
 use std::io;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::path::Path;
 use std::time::Instant;
-use super::io::CachedFile;
-use super::LinuxError;
-use crate::{Sample, network::{NetworkCounters, parse_net_dev_line}, parse::ParseError};
 
 #[derive(Clone, Debug)]
 pub struct Network {
@@ -21,7 +25,11 @@ pub struct Network {
     seen: u64,
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct InterfaceAddress { pub address: IpAddr, pub netmask: Option<IpAddr>, pub scope_id: u32 }
+pub struct InterfaceAddress {
+    pub address: IpAddr,
+    pub netmask: Option<IpAddr>,
+    pub scope_id: u32,
+}
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InterfaceDetails {
     pub name: Vec<u8>,
@@ -31,9 +39,15 @@ pub struct InterfaceDetails {
     pub sampled_at_ns: u64,
 }
 impl InterfaceDetails {
-    pub fn is_up(&self) -> bool { self.flags & 1 != 0 }
-    pub fn is_running(&self) -> bool { self.flags & 0x40 != 0 }
-    pub fn is_loopback(&self) -> bool { self.flags & 8 != 0 }
+    pub fn is_up(&self) -> bool {
+        self.flags & 1 != 0
+    }
+    pub fn is_running(&self) -> bool {
+        self.flags & 0x40 != 0
+    }
+    pub fn is_loopback(&self) -> bool {
+        self.flags & 8 != 0
+    }
 }
 
 pub struct Networks {
@@ -42,15 +56,32 @@ pub struct Networks {
     started: Instant,
     sample: Sample,
 }
-impl Default for Networks { fn default() -> Self { Self::new() } }
-impl Networks {
-    pub fn new() -> Self { Self::with_proc_root("/proc") }
-    pub fn with_proc_root(root: impl AsRef<Path>) -> Self {
-        Self { file: CachedFile::new(root.as_ref().join("net/dev")), table: HashMap::new(), started: Instant::now(), sample: Sample::default() }
+impl Default for Networks {
+    fn default() -> Self {
+        Self::new()
     }
-    pub fn iter(&self) -> impl Iterator<Item = &Network> { self.table.values() }
-    pub fn get(&self, name: &[u8]) -> Option<&Network> { self.table.get(name) }
-    pub fn sample(&self) -> Sample { self.sample }
+}
+impl Networks {
+    pub fn new() -> Self {
+        Self::with_proc_root("/proc")
+    }
+    pub fn with_proc_root(root: impl AsRef<Path>) -> Self {
+        Self {
+            file: CachedFile::new(root.as_ref().join("net/dev")),
+            table: HashMap::new(),
+            started: Instant::now(),
+            sample: Sample::default(),
+        }
+    }
+    pub fn iter(&self) -> impl Iterator<Item = &Network> {
+        self.table.values()
+    }
+    pub fn get(&self, name: &[u8]) -> Option<&Network> {
+        self.table.get(name)
+    }
+    pub fn sample(&self) -> Sample {
+        self.sample
+    }
     /// Every call reads live counters. Steady-state storage is reused.
     /// Deltas are invalidated on rollback and when an explicit details refresh detects a changed ifindex.
     /// Name reuse entirely between details refreshes cannot be distinguished from continuous traffic.
@@ -58,7 +89,8 @@ impl Networks {
         let bytes = self.file.read()?;
         let mut headers = bytes.split(|b| *b == b'\n');
         if !headers.next().is_some_and(|s| s.starts_with(b"Inter-"))
-            || !headers.next().is_some_and(|s| s.windows(4).any(|w| w == b"face")) {
+            || !headers.next().is_some_and(|s| s.windows(4).any(|w| w == b"face"))
+        {
             return Err(ParseError::InvalidRecord.into());
         }
         for line in bytes.split(|b| *b == b'\n').skip(2).filter(|s| !s.trim_ascii().is_empty()) {
@@ -76,10 +108,18 @@ impl Networks {
                 old.sample = sample;
                 old.seen = sequence;
             } else {
-                self.table.insert(raw.name.to_vec(), Network {
-                    name: raw.name.to_vec(), counters: raw.counters, delta: None,
-                    interval_ns: None, sample, details: None, seen: sequence,
-                });
+                self.table.insert(
+                    raw.name.to_vec(),
+                    Network {
+                        name: raw.name.to_vec(),
+                        counters: raw.counters,
+                        delta: None,
+                        interval_ns: None,
+                        sample,
+                        details: None,
+                        seen: sequence,
+                    },
+                );
             }
         }
         self.table.retain(|_, network| network.seen == sequence);
@@ -97,7 +137,9 @@ impl Networks {
                     network.interval_ns = None;
                 }
                 network.details = Some(value.clone());
-            } else { network.details = None; }
+            } else {
+                network.details = None;
+            }
         }
         Ok(())
     }
@@ -110,15 +152,31 @@ impl Networks {
 
 #[repr(C)]
 struct IfAddrs {
-    next: *mut IfAddrs, name: *mut c_char, flags: c_uint,
-    address: *mut c_void, netmask: *mut c_void, broadcast: *mut c_void, data: *mut c_void,
+    next: *mut IfAddrs,
+    name: *mut c_char,
+    flags: c_uint,
+    address: *mut c_void,
+    netmask: *mut c_void,
+    broadcast: *mut c_void,
+    data: *mut c_void,
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
-struct Address4 { family: u16, port: u16, address: [u8; 4], zero: [u8; 8] }
+struct Address4 {
+    family: u16,
+    port: u16,
+    address: [u8; 4],
+    zero: [u8; 8],
+}
 #[repr(C)]
 #[derive(Clone, Copy)]
-struct Address6 { family: u16, port: u16, flow: u32, address: [u8; 16], scope: u32 }
+struct Address6 {
+    family: u16,
+    port: u16,
+    flow: u32,
+    address: [u8; 16],
+    scope: u32,
+}
 unsafe extern "C" {
     fn getifaddrs(result: *mut *mut IfAddrs) -> c_int;
     fn freeifaddrs(list: *mut IfAddrs);
@@ -134,7 +192,9 @@ impl Drop for AddressList {
 fn interface_details(sampled_at_ns: u64) -> io::Result<Vec<InterfaceDetails>> {
     let mut head = std::ptr::null_mut();
     // SAFETY: head points to writable pointer storage.
-    if unsafe { getifaddrs(&mut head) } != 0 { return Err(io::Error::last_os_error()); }
+    if unsafe { getifaddrs(&mut head) } != 0 {
+        return Err(io::Error::last_os_error());
+    }
     let list = AddressList(head);
     let mut cursor = list.0;
     let mut result: Vec<InterfaceDetails> = Vec::new();
@@ -142,12 +202,17 @@ fn interface_details(sampled_at_ns: u64) -> io::Result<Vec<InterfaceDetails>> {
         // SAFETY: every node and its strings/addresses remain valid while list is owned.
         let entry = unsafe { &*cursor };
         cursor = entry.next;
-        if entry.name.is_null() { continue; }
+        if entry.name.is_null() {
+            continue;
+        }
         let name = unsafe { CStr::from_ptr(entry.name) }.to_bytes();
         let position = result.iter().position(|d| d.name == name).unwrap_or_else(|| {
             result.push(InterfaceDetails {
-                name: name.to_vec(), index: unsafe { if_nametoindex(entry.name) },
-                flags: entry.flags, addresses: Vec::new(), sampled_at_ns,
+                name: name.to_vec(),
+                index: unsafe { if_nametoindex(entry.name) },
+                flags: entry.flags,
+                addresses: Vec::new(),
+                sampled_at_ns,
             });
             result.len() - 1
         });
@@ -156,14 +221,18 @@ fn interface_details(sampled_at_ns: u64) -> io::Result<Vec<InterfaceDetails>> {
         if let Some((ip, scope_id)) = unsafe { decode_address(entry.address) } {
             let netmask = unsafe { decode_address(entry.netmask) }.map(|(ip, _)| ip);
             let address = InterfaceAddress { address: ip, netmask, scope_id };
-            if !record.addresses.contains(&address) { record.addresses.push(address); }
+            if !record.addresses.contains(&address) {
+                record.addresses.push(address);
+            }
         }
     }
     Ok(result)
 }
 /// The pointer must be null or an OS-owned sockaddr matching its family.
 unsafe fn decode_address(pointer: *const c_void) -> Option<(IpAddr, u32)> {
-    if pointer.is_null() { return None; }
+    if pointer.is_null() {
+        return None;
+    }
     // SAFETY: every sockaddr starts with the Linux u16 sa_family field.
     match unsafe { pointer.cast::<u16>().read_unaligned() } {
         2 => {

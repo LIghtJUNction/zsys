@@ -7,12 +7,20 @@ static NEXT: AtomicU64 = AtomicU64::new(0);
 struct Fixture(PathBuf);
 impl Fixture {
     fn new() -> Self {
-        let path = std::env::temp_dir().join(format!("zsys-collectors-{}-{}", std::process::id(), NEXT.fetch_add(1, Ordering::Relaxed)));
+        let path = std::env::temp_dir().join(format!(
+            "zsys-collectors-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
         fs::create_dir_all(path.join("net")).unwrap();
         Self(path)
     }
 }
-impl Drop for Fixture { fn drop(&mut self) { let _ = fs::remove_dir_all(&self.0); } }
+impl Drop for Fixture {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
 #[test]
 fn cpu_hotplug_and_failed_reads_preserve_snapshots() {
     let f = Fixture::new();
@@ -47,7 +55,9 @@ fn memory_estimates_are_explicit_and_failed_reads_do_not_become_zeros() {
     assert_eq!(*memory.snapshot(), previous);
 }
 fn net(rx: u64, tx: u64) -> String {
-    format!("Inter-| Receive | Transmit\n face |bytes packets errs drop fifo frame compressed multicast|bytes packets errs drop fifo colls carrier compressed\n eth0: {rx} 1 0 0 0 0 0 0 {tx} 1 0 0 0 0 0 0\n")
+    format!(
+        "Inter-| Receive | Transmit\n face |bytes packets errs drop fifo frame compressed multicast|bytes packets errs drop fifo colls carrier compressed\n eth0: {rx} 1 0 0 0 0 0 0 {tx} 1 0 0 0 0 0 0\n"
+    )
 }
 #[test]
 fn network_resets_and_malformed_data() {

@@ -7,9 +7,15 @@ pub struct Cadence {
     last_success: Option<u64>,
 }
 impl Cadence {
-    pub const fn new(interval_ns: u64) -> Self { Self { interval_ns, last_success: None } }
-    pub const fn interval_ns(&self) -> u64 { self.interval_ns }
-    pub fn set_interval_ns(&mut self, interval_ns: u64) { self.interval_ns = interval_ns; }
+    pub const fn new(interval_ns: u64) -> Self {
+        Self { interval_ns, last_success: None }
+    }
+    pub const fn interval_ns(&self) -> u64 {
+        self.interval_ns
+    }
+    pub fn set_interval_ns(&mut self, interval_ns: u64) {
+        self.interval_ns = interval_ns;
+    }
     pub fn is_due(&self, now_ns: u64) -> bool {
         match self.last_success.and_then(|old| now_ns.checked_sub(old)) {
             Some(elapsed) => elapsed >= self.interval_ns,
@@ -17,8 +23,12 @@ impl Cadence {
         }
     }
     /// Call only after collection succeeds. A failed read must remain retryable.
-    pub fn mark_success(&mut self, now_ns: u64) { self.last_success = Some(now_ns); }
-    pub fn reset(&mut self) { self.last_success = None; }
+    pub fn mark_success(&mut self, now_ns: u64) {
+        self.last_success = Some(now_ns);
+    }
+    pub fn reset(&mut self) {
+        self.last_success = None;
+    }
 }
 
 #[cfg(test)]
