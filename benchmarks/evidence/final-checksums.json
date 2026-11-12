@@ -1,0 +1,17 @@
+[
+  {
+    "path": "overview.json",
+    "bytes": 76021,
+    "sha256": "13886664140c244e532e46c1a59a1d2dded2af8c45f61b81515c27692c8839bd"
+  },
+  {
+    "path": "final-table.csv",
+    "bytes": 9975,
+    "sha256": "9aea40bc07c91e90416f327e23425e4eaa81bf6702f7ba074b1386e08ecc9c5a"
+  },
+  {
+    "path": "final-raw.tar.gz",
+    "bytes": 516782,
+    "sha256": "20a27c3ab1ba6463cea71063922417fa1a6abd6f670ef3cab8d8e80c04f82864"
+  }
+]
