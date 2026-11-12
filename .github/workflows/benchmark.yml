@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@stable
       - name: Verify exact comparison dependency
         run: |
@@ -27,7 +27,7 @@ jobs:
         run: python3 benchmarks/scale.py --samples 100 --repeats 3
       - name: Retain raw evidence and resolved lockfile
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: benchmark-${{ github.sha }}
           path: |
