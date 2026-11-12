@@ -1,31 +1,131 @@
 name: CI
 on:
   push:
-    branches: [main]
+    branches: [main, 'work/**']
   pull_request:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: false
+        default: ''
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.ref }}
+  cancel-in-progress: false
 jobs:
   test:
+    name: Core and available backend (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-24.04, ubuntu-22.04, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - run: cargo fmt --all
-      - run: cargo check --no-default-features
-      - run: cargo check --all-features
-      - run: cargo test --all-features
-      - run: cargo clippy --all-targets --all-features -- -D warnings
-      - run: cargo doc --no-deps --all-features
+      - if: runner.os == 'Linux'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: cargo fmt --all -- --check
+      - run: cargo test --locked --no-default-features
+      - run: cargo check --locked --no-default-features --features alloc
+      - run: cargo test --locked --all-features
+      - run: cargo clippy --locked --all-targets --all-features -- -D warnings
+      - run: cargo doc --locked --no-deps --all-features
+        env:
+          RUSTDOCFLAGS: -D warnings
+      - if: runner.os == 'Linux'
+        name: Match native ABI headers
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror scripts/check-abi.c -o /tmp/zsys-abi
+          /tmp/zsys-abi
+      - if: runner.os == 'Linux'
+        run: python3 scripts/test-version.py
+      - if: runner.os == 'Linux'
+        run: python3 scripts/check-package.py
   msrv:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
       - uses: dtolnay/rust-toolchain@1.95.0
-      - run: cargo check --no-default-features
-      - run: cargo test --all-features
+      - run: cargo test --locked --no-default-features
+      - run: cargo test --locked --all-features
+  no-std:
+    name: Bare-metal no_std and WASM core
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          targets: thumbv7em-none-eabi, wasm32-unknown-unknown
+      - run: cargo check --locked --no-default-features --target thumbv7em-none-eabi
+      - run: cargo check --locked --no-default-features --features alloc --target thumbv7em-none-eabi
+      - run: cargo check --locked --no-default-features --target wasm32-unknown-unknown
+  resources:
+    name: Continuous collector resource soak
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --locked --release --test process_resources -- --nocapture
+        env:
+          ZSYS_SOAK_SECONDS: '60'
+  linux-arm:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --locked --all-features
+      - name: Match native ABI headers
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror scripts/check-abi.c -o /tmp/zsys-abi
+          /tmp/zsys-abi
+  distributions:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ['rust:1.95-bookworm', 'rust:1.95-alpine']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - name: Debian/glibc and Alpine/musl native tests
+        env:
+          RUST_IMAGE: ${{ matrix.image }}
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work "$RUST_IMAGE" sh -ec '
+            if command -v apk >/dev/null; then apk add --no-cache build-base; fi
+            cc -std=c11 -Wall -Wextra -Werror scripts/check-abi.c -o /tmp/zsys-abi
+            /tmp/zsys-abi
+            cargo test --locked --all-features
+            cargo check --locked --no-default-features
+          '
+  benchmark-build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --manifest-path benchmarks/Cargo.toml -- --check
+      - run: cargo build --locked --release --manifest-path benchmarks/Cargo.toml
+      - run: cargo clippy --locked --manifest-path benchmarks/Cargo.toml -- -D warnings

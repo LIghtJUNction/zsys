@@ -1,0 +1,2367 @@
+{
+  "baseline_sysinfo": "0.40.3",
+  "baseline_crate_checksum": "a86bac2f7d06e6384984118ad727f5694110f0ec44d924d05c8fdec3d030bee6",
+  "notes": [
+    "Timing is descriptive for this shared cloud environment, not a production latency guarantee. No local compilation or deliberate load generation overlapped these final runs; other tenants and scheduler effects remain uncontrolled.",
+    "All raw rows from all repeats are pooled. P95/P99 use nearest rank; no outlier removal. CPU/basic have 300 samples each implementation; other main hot/cold paths have 3000. Scaling has300 per implementation per case.",
+    "CPU/basic sleep 210ms before each timed call, excluding sleep from durations. cpu_hot/basic_hot have different CPU freshness policies and are intentionally not comparable.",
+    "Process parity gates compare full PID inventories and an idle controlled child common fields; each raw process sample records actual process count. Both compared RSS paths use statm semantics, which remains a kernel approximation.",
+    "Process counts include the benchmark process and runner/shell, not only controlled sleep children. Every final scaling sample had exactly 100/500/1000/5000 records.",
+    "Network results from network-fixed supersede the older network rows in hot after the 89e6c6c interface-generation fix. Non-network native code remained unchanged from b469697.",
+    "In this restricted network namespace, sysinfo returns an empty interface list; full network and all-module full comparisons are unavailable. zsys-only counter or complete network times are not sysinfo speedups.",
+    "Rust allocation counts/bytes include successful alloc, alloc_zeroed, realloc requests. Retained heap excludes the measurement sample vector; C-library allocations, allocator metadata, stack and mappings are not counted. VmHWM includes those plus harness/loader and is the OS-reported peak, not exact collector-only memory.",
+    "The earlier requested 10000-process run hit an available-memory safety threshold at 6340 actual visible processes. Its timing used the superseded stat-RSS path and is not a final same-scope result. The resource limit itself is recorded in the development archive.",
+    "Cold means constructing, first-refreshing and dropping collectors with warm OS caches, not reboot-cold storage or a fresh executable for every sample."
+  ],
+  "groups": [
+    {
+      "name": "hot",
+      "source_commit": "b469697a422d84b5e75cab2f2316f7f21d6fe036",
+      "binary_sha256": "5be96c68848fce745b6489e76dbad649b279c4b53918dce532ecfba5ca823723",
+      "time_utc": "2026-11-12T10:07:48Z",
+      "environment_archive_path": "hot/environment.json",
+      "hardware": {
+        "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "logical_cpus": 9,
+        "memory": {
+          "MemTotal": 10475802624,
+          "MemAvailable": 5273477120
+        },
+        "os_release": "PRETTY_NAME=\"Debian GNU/Linux 13 (trixie)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"13\"\nVERSION=\"13 (trixie)\"\nVERSION_CODENAME=trixie\nDEBIAN_VERSION_FULL=13.6\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"\n",
+        "kernel": "6.18.57",
+        "architecture": "x86_64",
+        "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
+        "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+        "profile": "release; thin LTO; codegen-units=1",
+        "rustflags": ""
+      },
+      "visible_processes_before_benchmark_child": 2,
+      "requested_visible_processes": 0,
+      "spawned": 0,
+      "spawn_error": null,
+      "process_scope_verified": true,
+      "network_scope_verified": false,
+      "sample_method": "All raw samples pooled across repeats; nearest-rank P95/P99; reciprocal mean excludes pacing sleeps; descriptive statistics, not confidence bounds",
+      "results": [
+        {
+          "case": "memory",
+          "implementation": "zsys",
+          "scope": "matched",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 3647.753,
+          "median_ns": 3187.5,
+          "p95_ns": 3330,
+          "p99_ns": 12998,
+          "max_ns": 144818,
+          "operations_per_second": 274141.3686727144,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            8212,
+            8212
+          ],
+          "retained_heap_after_bytes_range": [
+            8212,
+            8212
+          ],
+          "process_peak_rss_kib_range": [
+            1464,
+            1528
+          ],
+          "observed_processes_range": [
+            0,
+            0
+          ]
+        },
+        {
+          "case": "memory",
+          "implementation": "sysinfo",
+          "scope": "matched",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 6750.947666666667,
+          "median_ns": 5967.0,
+          "p95_ns": 6337,
+          "p99_ns": 20954,
+          "max_ns": 309941,
+          "operations_per_second": 148127.3517994486,
+          "allocations_per_op": 1,
+          "allocated_bytes_per_op": 16635,
+          "peak_extra_live_bytes": 16635,
+          "retained_heap_before_bytes_range": [
+            1056,
+            1056
+          ],
+          "retained_heap_after_bytes_range": [
+            1056,
+            1056
+          ],
+          "process_peak_rss_kib_range": [
+            1476,
+            1544
+          ],
+          "observed_processes_range": [
+            0,
+            0
+          ]
+        },
+        {
+          "case": "process_single",
+          "implementation": "zsys",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 5512.230666666666,
+          "median_ns": 4281.0,
+          "p95_ns": 4554,
+          "p99_ns": 45359,
+          "max_ns": 240839,
+          "operations_per_second": 181414.75937267262,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            4648,
+            4648
+          ],
+          "retained_heap_after_bytes_range": [
+            4648,
+            4648
+          ],
+          "process_peak_rss_kib_range": [
+            1480,
+            1544
+          ],
+          "observed_processes_range": [
+            1,
+            1
+          ]
+        },
+        {
+          "case": "process_single",
+          "implementation": "sysinfo",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 16753.913,
+          "median_ns": 12225.0,
+          "p95_ns": 18934,
+          "p99_ns": 99836,
+          "max_ns": 1684298,
+          "operations_per_second": 59687.54881322351,
+          "allocations_per_op": 12,
+          "allocated_bytes_per_op": 33326,
+          "peak_extra_live_bytes": 33245,
+          "retained_heap_before_bytes_range": [
+            6322,
+            6322
+          ],
+          "retained_heap_after_bytes_range": [
+            6322,
+            6322
+          ],
+          "process_peak_rss_kib_range": [
+            1588,
+            1652
+          ],
+          "observed_processes_range": [
+            1,
+            1
+          ]
+        },
+        {
+          "case": "process_inventory",
+          "implementation": "zsys",
+          "scope": "matched_inventory",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 20097.05,
+          "median_ns": 16820.0,
+          "p95_ns": 23020,
+          "p99_ns": 85232,
+          "max_ns": 2042872,
+          "operations_per_second": 49758.546652369376,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            8771,
+            8771
+          ],
+          "retained_heap_after_bytes_range": [
+            8771,
+            8771
+          ],
+          "process_peak_rss_kib_range": [
+            1484,
+            1552
+          ],
+          "observed_processes_range": [
+            3,
+            3
+          ]
+        },
+        {
+          "case": "process_inventory",
+          "implementation": "sysinfo",
+          "scope": "matched_inventory",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 42915.51033333333,
+          "median_ns": 35287.0,
+          "p95_ns": 87557,
+          "p99_ns": 184405,
+          "max_ns": 1091582,
+          "operations_per_second": 23301.59870482258,
+          "allocations_per_op": 85,
+          "allocated_bytes_per_op": 34671,
+          "peak_extra_live_bytes": 33694,
+          "retained_heap_before_bytes_range": [
+            2756,
+            2756
+          ],
+          "retained_heap_after_bytes_range": [
+            2756,
+            2756
+          ],
+          "process_peak_rss_kib_range": [
+            1624,
+            1628
+          ],
+          "observed_processes_range": [
+            3,
+            3
+          ]
+        },
+        {
+          "case": "process_all",
+          "implementation": "zsys",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 19280.866666666665,
+          "median_ns": 16857.0,
+          "p95_ns": 22013,
+          "p99_ns": 90308,
+          "max_ns": 293651,
+          "operations_per_second": 51864.88850777801,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            8771,
+            8771
+          ],
+          "retained_heap_after_bytes_range": [
+            8771,
+            8771
+          ],
+          "process_peak_rss_kib_range": [
+            1488,
+            1552
+          ],
+          "observed_processes_range": [
+            3,
+            3
+          ]
+        },
+        {
+          "case": "process_all",
+          "implementation": "sysinfo",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 51953.956333333335,
+          "median_ns": 40676.0,
+          "p95_ns": 101290,
+          "p99_ns": 211068,
+          "max_ns": 1629464,
+          "operations_per_second": 19247.812304881318,
+          "allocations_per_op": 85,
+          "allocated_bytes_per_op": 34671,
+          "peak_extra_live_bytes": 33694,
+          "retained_heap_before_bytes_range": [
+            6347,
+            6347
+          ],
+          "retained_heap_after_bytes_range": [
+            6347,
+            6347
+          ],
+          "process_peak_rss_kib_range": [
+            1584,
+            1652
+          ],
+          "observed_processes_range": [
+            3,
+            3
+          ]
+        },
+        {
+          "case": "process_all_std",
+          "implementation": "zsys",
+          "scope": "zsys_only",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 27603.37,
+          "median_ns": 23832.0,
+          "p95_ns": 43924,
+          "p99_ns": 104997,
+          "max_ns": 561344,
+          "operations_per_second": 36227.46063252422,
+          "allocations_per_op": 110,
+          "allocated_bytes_per_op": 813,
+          "peak_extra_live_bytes": 78,
+          "retained_heap_before_bytes_range": [
+            4675,
+            4675
+          ],
+          "retained_heap_after_bytes_range": [
+            4675,
+            4675
+          ],
+          "process_peak_rss_kib_range": [
+            1496,
+            1560
+          ],
+          "observed_processes_range": [
+            3,
+            3
+          ]
+        },
+        {
+          "case": "enumerate",
+          "implementation": "zsys",
+          "scope": "zsys_only",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 4541.9473333333335,
+          "median_ns": 3780.0,
+          "p95_ns": 3945,
+          "p99_ns": 19504,
+          "max_ns": 296549,
+          "operations_per_second": 220169.88014392063,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            8213,
+            8213
+          ],
+          "retained_heap_after_bytes_range": [
+            8213,
+            8213
+          ],
+          "process_peak_rss_kib_range": [
+            1356,
+            1548
+          ],
+          "observed_processes_range": [
+            3,
+            3
+          ]
+        },
+        {
+          "case": "enumerate_std",
+          "implementation": "zsys",
+          "scope": "zsys_only",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 14087.031,
+          "median_ns": 10766.0,
+          "p95_ns": 13321,
+          "p99_ns": 89843,
+          "max_ns": 1147753,
+          "operations_per_second": 70987.27900861438,
+          "allocations_per_op": 110,
+          "allocated_bytes_per_op": 813,
+          "peak_extra_live_bytes": 78,
+          "retained_heap_before_bytes_range": [
+            4117,
+            4117
+          ],
+          "retained_heap_after_bytes_range": [
+            4117,
+            4117
+          ],
+          "process_peak_rss_kib_range": [
+            1480,
+            1484
+          ],
+          "observed_processes_range": [
+            3,
+            3
+          ]
+        },
+        {
+          "case": "disk",
+          "implementation": "zsys",
+          "scope": "matched_storage",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 8462.145,
+          "median_ns": 7001.0,
+          "p95_ns": 7237,
+          "p99_ns": 58890,
+          "max_ns": 324783,
+          "operations_per_second": 118173.34730142298,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            1572,
+            1572
+          ],
+          "retained_heap_after_bytes_range": [
+            1572,
+            1572
+          ],
+          "process_peak_rss_kib_range": [
+            1612,
+            1616
+          ],
+          "observed_processes_range": [
+            0,
+            0
+          ]
+        },
+        {
+          "case": "disk",
+          "implementation": "sysinfo",
+          "scope": "matched_storage",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 9219.390333333333,
+          "median_ns": 7771.5,
+          "p95_ns": 8027,
+          "p99_ns": 59394,
+          "max_ns": 251136,
+          "operations_per_second": 108467.042162694,
+          "allocations_per_op": 22,
+          "allocated_bytes_per_op": 723,
+          "peak_extra_live_bytes": 94,
+          "retained_heap_before_bytes_range": [
+            3339,
+            3339
+          ],
+          "retained_heap_after_bytes_range": [
+            3339,
+            3339
+          ],
+          "process_peak_rss_kib_range": [
+            1552,
+            1556
+          ],
+          "observed_processes_range": [
+            0,
+            0
+          ]
+        },
+        {
+          "case": "disk_io",
+          "implementation": "zsys",
+          "scope": "zsys_only",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 16808.097333333335,
+          "median_ns": 14158.5,
+          "p95_ns": 19216,
+          "p99_ns": 77551,
+          "max_ns": 532474,
+          "operations_per_second": 59495.13381367853,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            23738,
+            23738
+          ],
+          "retained_heap_after_bytes_range": [
+            23738,
+            23738
+          ],
+          "process_peak_rss_kib_range": [
+            1504,
+            1572
+          ],
+          "observed_processes_range": [
+            0,
+            0
+          ]
+        },
+        {
+          "case": "network",
+          "implementation": "zsys",
+          "scope": "unmatched_network_metadata",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 26549.779666666665,
+          "median_ns": 17003.0,
+          "p95_ns": 77200,
+          "p99_ns": 133571,
+          "max_ns": 355388,
+          "operations_per_second": 37665.096002868275,
+          "allocations_per_op": 20,
+          "allocated_bytes_per_op": 3441,
+          "peak_extra_live_bytes": 2626,
+          "retained_heap_before_bytes_range": [
+            10718,
+            10718
+          ],
+          "retained_heap_after_bytes_range": [
+            10718,
+            10718
+          ],
+          "process_peak_rss_kib_range": [
+            1568,
+            1568
+          ],
+          "observed_processes_range": [
+            0,
+            0
+          ]
+        },
+        {
+          "case": "network_counters",
+          "implementation": "zsys",
+          "scope": "zsys_only",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 1983.7063333333333,
+          "median_ns": 1706.0,
+          "p95_ns": 1797,
+          "p99_ns": 3001,
+          "max_ns": 218875,
+          "operations_per_second": 504106.8746902893,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            10636,
+            10636
+          ],
+          "retained_heap_after_bytes_range": [
+            10636,
+            10636
+          ],
+          "process_peak_rss_kib_range": [
+            1548,
+            1552
+          ],
+          "observed_processes_range": [
+            0,
+            0
+          ]
+        },
+        {
+          "case": "cold_process_single",
+          "implementation": "zsys",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 6067.128333333333,
+          "median_ns": 5178.0,
+          "p95_ns": 5329,
+          "p99_ns": 25709,
+          "max_ns": 500000,
+          "operations_per_second": 164822.6220147533,
+          "allocations_per_op": 4,
+          "allocated_bytes_per_op": 4648,
+          "peak_extra_live_bytes": 4648,
+          "retained_heap_before_bytes_range": [
+            0,
+            0
+          ],
+          "retained_heap_after_bytes_range": [
+            0,
+            0
+          ],
+          "process_peak_rss_kib_range": [
+            1484,
+            1548
+          ],
+          "observed_processes_range": [
+            1,
+            1
+          ]
+        },
+        {
+          "case": "cold_process_single",
+          "implementation": "sysinfo",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 107813.85933333333,
+          "median_ns": 88995.5,
+          "p95_ns": 172822,
+          "p99_ns": 332060,
+          "max_ns": 4613988,
+          "operations_per_second": 9275.2453736792,
+          "allocations_per_op": 78,
+          "allocated_bytes_per_op": 92531,
+          "peak_extra_live_bytes": 35915,
+          "retained_heap_before_bytes_range": [
+            0,
+            0
+          ],
+          "retained_heap_after_bytes_range": [
+            0,
+            0
+          ],
+          "process_peak_rss_kib_range": [
+            1656,
+            1664
+          ],
+          "observed_processes_range": [
+            1,
+            1
+          ]
+        },
+        {
+          "case": "cold_process_all",
+          "implementation": "zsys",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 25096.209,
+          "median_ns": 18238.0,
+          "p95_ns": 41427,
+          "p99_ns": 147169,
+          "max_ns": 2600941,
+          "operations_per_second": 39846.655723978074,
+          "allocations_per_op": 8,
+          "allocated_bytes_per_op": 8771,
+          "peak_extra_live_bytes": 8771,
+          "retained_heap_before_bytes_range": [
+            0,
+            0
+          ],
+          "retained_heap_after_bytes_range": [
+            0,
+            0
+          ],
+          "process_peak_rss_kib_range": [
+            1548,
+            1548
+          ],
+          "observed_processes_range": [
+            3,
+            3
+          ]
+        },
+        {
+          "case": "cold_process_all",
+          "implementation": "sysinfo",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 165210.28033333333,
+          "median_ns": 121492.0,
+          "p95_ns": 283508,
+          "p99_ns": 721417,
+          "max_ns": 4858538,
+          "operations_per_second": 6052.892095954134,
+          "allocations_per_op": 155,
+          "allocated_bytes_per_op": 93901,
+          "peak_extra_live_bytes": 35982,
+          "retained_heap_before_bytes_range": [
+            0,
+            0
+          ],
+          "retained_heap_after_bytes_range": [
+            0,
+            0
+          ],
+          "process_peak_rss_kib_range": [
+            1612,
+            1672
+          ],
+          "observed_processes_range": [
+            3,
+            3
+          ]
+        },
+        {
+          "case": "cold_basic",
+          "implementation": "zsys",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 38023.946,
+          "median_ns": 31132.0,
+          "p95_ns": 73361,
+          "p99_ns": 146057,
+          "max_ns": 604499,
+          "operations_per_second": 26299.216814583102,
+          "allocations_per_op": 19,
+          "allocated_bytes_per_op": 27897,
+          "peak_extra_live_bytes": 26725,
+          "retained_heap_before_bytes_range": [
+            0,
+            0
+          ],
+          "retained_heap_after_bytes_range": [
+            0,
+            0
+          ],
+          "process_peak_rss_kib_range": [
+            1568,
+            1576
+          ],
+          "observed_processes_range": [
+            3,
+            3
+          ]
+        },
+        {
+          "case": "cold_basic",
+          "implementation": "sysinfo",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 154903.756,
+          "median_ns": 126521.0,
+          "p95_ns": 257920,
+          "p99_ns": 449892,
+          "max_ns": 3537933,
+          "operations_per_second": 6455.621385965619,
+          "allocations_per_op": 156,
+          "allocated_bytes_per_op": 110536,
+          "peak_extra_live_bytes": 39573,
+          "retained_heap_before_bytes_range": [
+            0,
+            0
+          ],
+          "retained_heap_after_bytes_range": [
+            0,
+            0
+          ],
+          "process_peak_rss_kib_range": [
+            1632,
+            1636
+          ],
+          "observed_processes_range": [
+            3,
+            3
+          ]
+        },
+        {
+          "case": "cpu_hot",
+          "implementation": "zsys",
+          "scope": "different_freshness",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 7601.099,
+          "median_ns": 6177.0,
+          "p95_ns": 6734,
+          "p99_ns": 53495,
+          "max_ns": 237662,
+          "operations_per_second": 131559.92311111852,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            11278,
+            11278
+          ],
+          "retained_heap_after_bytes_range": [
+            11278,
+            11278
+          ],
+          "process_peak_rss_kib_range": [
+            1532,
+            1536
+          ],
+          "observed_processes_range": [
+            0,
+            0
+          ]
+        },
+        {
+          "case": "cpu_hot",
+          "implementation": "sysinfo",
+          "scope": "different_freshness",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 58.602333333333334,
+          "median_ns": 52.0,
+          "p95_ns": 54,
+          "p99_ns": 59,
+          "max_ns": 20532,
+          "operations_per_second": 17064166.955809496,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            4647,
+            4647
+          ],
+          "retained_heap_after_bytes_range": [
+            4647,
+            4647
+          ],
+          "process_peak_rss_kib_range": [
+            1552,
+            1556
+          ],
+          "observed_processes_range": [
+            0,
+            0
+          ]
+        },
+        {
+          "case": "basic_hot",
+          "implementation": "zsys",
+          "scope": "different_freshness",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 32453.014,
+          "median_ns": 27153.5,
+          "p95_ns": 63307,
+          "p99_ns": 125696,
+          "max_ns": 1292565,
+          "operations_per_second": 30813.77896056126,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            28261,
+            28261
+          ],
+          "retained_heap_after_bytes_range": [
+            28261,
+            28261
+          ],
+          "process_peak_rss_kib_range": [
+            1504,
+            1572
+          ],
+          "observed_processes_range": [
+            3,
+            3
+          ]
+        },
+        {
+          "case": "basic_hot",
+          "implementation": "sysinfo",
+          "scope": "different_freshness",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 57331.81733333333,
+          "median_ns": 47127.0,
+          "p95_ns": 112720,
+          "p99_ns": 228040,
+          "max_ns": 566753,
+          "operations_per_second": 17442.321672552134,
+          "allocations_per_op": 85,
+          "allocated_bytes_per_op": 51299,
+          "peak_extra_live_bytes": 33695,
+          "retained_heap_before_bytes_range": [
+            6348,
+            6348
+          ],
+          "retained_heap_after_bytes_range": [
+            6348,
+            6348
+          ],
+          "process_peak_rss_kib_range": [
+            1572,
+            1572
+          ],
+          "observed_processes_range": [
+            3,
+            3
+          ]
+        }
+      ],
+      "comparisons": [
+        {
+          "case": "memory",
+          "comparable": true,
+          "median_speedup": 1.872,
+          "mean_speedup": 1.8507140331778678,
+          "p99_speedup": 1.6120941683335899
+        },
+        {
+          "case": "process_single",
+          "comparable": true,
+          "median_speedup": 2.8556412053258584,
+          "mean_speedup": 3.0394070954456915,
+          "p99_speedup": 2.2010185409731253
+        },
+        {
+          "case": "process_inventory",
+          "comparable": true,
+          "median_speedup": 2.0979191438763376,
+          "mean_speedup": 2.1354134230314066,
+          "p99_speedup": 2.163565327576497
+        },
+        {
+          "case": "process_all",
+          "comparable": true,
+          "median_speedup": 2.4130035000296615,
+          "mean_speedup": 2.6945861527663006,
+          "p99_speedup": 2.3372015768259735
+        },
+        {
+          "case": "disk",
+          "comparable": true,
+          "median_speedup": 1.1100557063276675,
+          "mean_speedup": 1.0894862157683818,
+          "p99_speedup": 1.0085583290881304
+        },
+        {
+          "case": "cold_process_single",
+          "comparable": true,
+          "median_speedup": 17.187234453456934,
+          "mean_speedup": 17.77016298484978,
+          "p99_speedup": 12.916099420436423
+        },
+        {
+          "case": "cold_process_all",
+          "comparable": true,
+          "median_speedup": 6.661476039039369,
+          "mean_speedup": 6.583077162504239,
+          "p99_speedup": 4.901963049283477
+        },
+        {
+          "case": "cold_basic",
+          "comparable": true,
+          "median_speedup": 4.064017730952075,
+          "mean_speedup": 4.073847464437278,
+          "p99_speedup": 3.0802494916368266
+        },
+        {
+          "case": "cpu_hot",
+          "comparable": false,
+          "reason": "Different refresh scope/freshness, failed/unperformed parity gate, or unequal observed process counts; no ratio claimed"
+        },
+        {
+          "case": "basic_hot",
+          "comparable": false,
+          "reason": "Different refresh scope/freshness, failed/unperformed parity gate, or unequal observed process counts; no ratio claimed"
+        }
+      ],
+      "failed_runs": [
+        {
+          "case": "network",
+          "implementation": "sysinfo",
+          "repeat": 0,
+          "scope": "unmatched_network_metadata",
+          "raw_samples_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "status": "failed",
+          "exit_code": 101,
+          "reason": "thread 'main' (73) panicked at src/main.rs:402:21:\nassertion failed: !c.is_empty()\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+        },
+        {
+          "case": "network",
+          "implementation": "sysinfo",
+          "repeat": 1,
+          "scope": "unmatched_network_metadata",
+          "raw_samples_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "status": "failed",
+          "exit_code": 101,
+          "reason": "thread 'main' (74) panicked at src/main.rs:402:21:\nassertion failed: !c.is_empty()\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+        },
+        {
+          "case": "network",
+          "implementation": "sysinfo",
+          "repeat": 2,
+          "scope": "unmatched_network_metadata",
+          "raw_samples_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "status": "failed",
+          "exit_code": 101,
+          "reason": "thread 'main' (77) panicked at src/main.rs:402:21:\nassertion failed: !c.is_empty()\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+        },
+        {
+          "case": "full",
+          "implementation": "zsys",
+          "repeat": 0,
+          "scope": "unmatched_network_metadata",
+          "raw_samples_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "status": "unavailable",
+          "exit_code": 126,
+          "reason": "full comparison unavailable: network and process content gates must both pass before timing"
+        },
+        {
+          "case": "full",
+          "implementation": "sysinfo",
+          "repeat": 0,
+          "scope": "unmatched_network_metadata",
+          "raw_samples_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "status": "unavailable",
+          "exit_code": 126,
+          "reason": "full comparison unavailable: network and process content gates must both pass before timing"
+        },
+        {
+          "case": "full",
+          "implementation": "sysinfo",
+          "repeat": 1,
+          "scope": "unmatched_network_metadata",
+          "raw_samples_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "status": "unavailable",
+          "exit_code": 126,
+          "reason": "full comparison unavailable: network and process content gates must both pass before timing"
+        },
+        {
+          "case": "full",
+          "implementation": "zsys",
+          "repeat": 1,
+          "scope": "unmatched_network_metadata",
+          "raw_samples_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "status": "unavailable",
+          "exit_code": 126,
+          "reason": "full comparison unavailable: network and process content gates must both pass before timing"
+        },
+        {
+          "case": "full",
+          "implementation": "zsys",
+          "repeat": 2,
+          "scope": "unmatched_network_metadata",
+          "raw_samples_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "status": "unavailable",
+          "exit_code": 126,
+          "reason": "full comparison unavailable: network and process content gates must both pass before timing"
+        },
+        {
+          "case": "full",
+          "implementation": "sysinfo",
+          "repeat": 2,
+          "scope": "unmatched_network_metadata",
+          "raw_samples_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "status": "unavailable",
+          "exit_code": 126,
+          "reason": "full comparison unavailable: network and process content gates must both pass before timing"
+        }
+      ]
+    },
+    {
+      "name": "network-fixed",
+      "source_commit": "89e6c6c020869f3e6b37ea393bfc1040bd336d71",
+      "binary_sha256": "01fa96c67ce7a3f08399a142531772936510f061271617448ac6a21e7b2e36e1",
+      "time_utc": "2026-11-12T10:16:25Z",
+      "environment_archive_path": "network-fixed/environment.json",
+      "hardware": {
+        "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "logical_cpus": 9,
+        "memory": {
+          "MemTotal": 10475802624,
+          "MemAvailable": 5308358656
+        },
+        "os_release": "PRETTY_NAME=\"Debian GNU/Linux 13 (trixie)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"13\"\nVERSION=\"13 (trixie)\"\nVERSION_CODENAME=trixie\nDEBIAN_VERSION_FULL=13.6\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"\n",
+        "kernel": "6.18.57",
+        "architecture": "x86_64",
+        "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
+        "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+        "profile": "release; thin LTO; codegen-units=1",
+        "rustflags": ""
+      },
+      "visible_processes_before_benchmark_child": 2,
+      "requested_visible_processes": 0,
+      "spawned": 0,
+      "spawn_error": null,
+      "process_scope_verified": true,
+      "network_scope_verified": false,
+      "sample_method": "All raw samples pooled across repeats; nearest-rank P95/P99; reciprocal mean excludes pacing sleeps; descriptive statistics, not confidence bounds",
+      "results": [
+        {
+          "case": "network",
+          "implementation": "zsys",
+          "scope": "unmatched_network_metadata",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 27969.983666666667,
+          "median_ns": 17524.5,
+          "p95_ns": 78734,
+          "p99_ns": 128021,
+          "max_ns": 501089,
+          "operations_per_second": 35752.61294098479,
+          "allocations_per_op": 20,
+          "allocated_bytes_per_op": 3441,
+          "peak_extra_live_bytes": 2626,
+          "retained_heap_before_bytes_range": [
+            10750,
+            10750
+          ],
+          "retained_heap_after_bytes_range": [
+            10750,
+            10750
+          ],
+          "process_peak_rss_kib_range": [
+            1568,
+            1572
+          ],
+          "observed_processes_range": [
+            0,
+            0
+          ]
+        },
+        {
+          "case": "network_counters",
+          "implementation": "zsys",
+          "scope": "zsys_only",
+          "repeats": 3,
+          "samples": 3000,
+          "mean_ns": 1936.7863333333332,
+          "median_ns": 1706.0,
+          "p95_ns": 1816,
+          "p99_ns": 2640,
+          "max_ns": 159400,
+          "operations_per_second": 516319.2153875518,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            10668,
+            10668
+          ],
+          "retained_heap_after_bytes_range": [
+            10668,
+            10668
+          ],
+          "process_peak_rss_kib_range": [
+            1548,
+            1552
+          ],
+          "observed_processes_range": [
+            0,
+            0
+          ]
+        }
+      ],
+      "comparisons": [],
+      "failed_runs": [
+        {
+          "case": "network",
+          "implementation": "sysinfo",
+          "repeat": 0,
+          "scope": "unmatched_network_metadata",
+          "raw_samples_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "status": "failed",
+          "exit_code": 101,
+          "reason": "thread 'main' (31) panicked at src/main.rs:402:21:\nassertion failed: !c.is_empty()\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+        },
+        {
+          "case": "network",
+          "implementation": "sysinfo",
+          "repeat": 1,
+          "scope": "unmatched_network_metadata",
+          "raw_samples_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "status": "failed",
+          "exit_code": 101,
+          "reason": "thread 'main' (32) panicked at src/main.rs:402:21:\nassertion failed: !c.is_empty()\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+        },
+        {
+          "case": "network",
+          "implementation": "sysinfo",
+          "repeat": 2,
+          "scope": "unmatched_network_metadata",
+          "raw_samples_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "status": "failed",
+          "exit_code": 101,
+          "reason": "thread 'main' (35) panicked at src/main.rs:402:21:\nassertion failed: !c.is_empty()\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+        },
+        {
+          "case": "full",
+          "implementation": "zsys",
+          "repeat": 0,
+          "scope": "unmatched_network_metadata",
+          "raw_samples_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "status": "unavailable",
+          "exit_code": 126,
+          "reason": "full comparison unavailable: network and process content gates must both pass before timing"
+        },
+        {
+          "case": "full",
+          "implementation": "sysinfo",
+          "repeat": 0,
+          "scope": "unmatched_network_metadata",
+          "raw_samples_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "status": "unavailable",
+          "exit_code": 126,
+          "reason": "full comparison unavailable: network and process content gates must both pass before timing"
+        },
+        {
+          "case": "full",
+          "implementation": "sysinfo",
+          "repeat": 1,
+          "scope": "unmatched_network_metadata",
+          "raw_samples_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "status": "unavailable",
+          "exit_code": 126,
+          "reason": "full comparison unavailable: network and process content gates must both pass before timing"
+        },
+        {
+          "case": "full",
+          "implementation": "zsys",
+          "repeat": 1,
+          "scope": "unmatched_network_metadata",
+          "raw_samples_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "status": "unavailable",
+          "exit_code": 126,
+          "reason": "full comparison unavailable: network and process content gates must both pass before timing"
+        },
+        {
+          "case": "full",
+          "implementation": "zsys",
+          "repeat": 2,
+          "scope": "unmatched_network_metadata",
+          "raw_samples_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "status": "unavailable",
+          "exit_code": 126,
+          "reason": "full comparison unavailable: network and process content gates must both pass before timing"
+        },
+        {
+          "case": "full",
+          "implementation": "sysinfo",
+          "repeat": 2,
+          "scope": "unmatched_network_metadata",
+          "raw_samples_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "status": "unavailable",
+          "exit_code": 126,
+          "reason": "full comparison unavailable: network and process content gates must both pass before timing"
+        }
+      ]
+    },
+    {
+      "name": "paced",
+      "source_commit": "e59722344c97e4365226837506a18f9817511795",
+      "binary_sha256": "5be96c68848fce745b6489e76dbad649b279c4b53918dce532ecfba5ca823723",
+      "time_utc": "2026-11-12T10:10:31Z",
+      "environment_archive_path": "paced/environment.json",
+      "hardware": {
+        "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "logical_cpus": 9,
+        "memory": {
+          "MemTotal": 10475802624,
+          "MemAvailable": 5310070784
+        },
+        "os_release": "PRETTY_NAME=\"Debian GNU/Linux 13 (trixie)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"13\"\nVERSION=\"13 (trixie)\"\nVERSION_CODENAME=trixie\nDEBIAN_VERSION_FULL=13.6\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"\n",
+        "kernel": "6.18.57",
+        "architecture": "x86_64",
+        "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
+        "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+        "profile": "release; thin LTO; codegen-units=1",
+        "rustflags": ""
+      },
+      "visible_processes_before_benchmark_child": 2,
+      "requested_visible_processes": 0,
+      "spawned": 0,
+      "spawn_error": null,
+      "process_scope_verified": true,
+      "network_scope_verified": null,
+      "sample_method": "All raw samples pooled across repeats; nearest-rank P95/P99; reciprocal mean excludes pacing sleeps; descriptive statistics, not confidence bounds",
+      "results": [
+        {
+          "case": "cpu",
+          "implementation": "zsys",
+          "scope": "matched",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 60938.79666666667,
+          "median_ns": 42520.0,
+          "p95_ns": 137969,
+          "p99_ns": 514797,
+          "max_ns": 581471,
+          "operations_per_second": 16409.907229871456,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            11278,
+            11278
+          ],
+          "retained_heap_after_bytes_range": [
+            11278,
+            11278
+          ],
+          "process_peak_rss_kib_range": [
+            1476,
+            1480
+          ],
+          "observed_processes_range": [
+            0,
+            0
+          ]
+        },
+        {
+          "case": "cpu",
+          "implementation": "sysinfo",
+          "scope": "matched",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 115524.17666666667,
+          "median_ns": 75117.0,
+          "p95_ns": 127236,
+          "p99_ns": 231166,
+          "max_ns": 9445561,
+          "operations_per_second": 8656.196727420953,
+          "allocations_per_op": 12,
+          "allocated_bytes_per_op": 9671,
+          "peak_extra_live_bytes": 9201,
+          "retained_heap_before_bytes_range": [
+            4647,
+            4647
+          ],
+          "retained_heap_after_bytes_range": [
+            4647,
+            4647
+          ],
+          "process_peak_rss_kib_range": [
+            1492,
+            1496
+          ],
+          "observed_processes_range": [
+            0,
+            0
+          ]
+        },
+        {
+          "case": "basic",
+          "implementation": "zsys",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 213790.88666666666,
+          "median_ns": 158252.5,
+          "p95_ns": 278566,
+          "p99_ns": 1453126,
+          "max_ns": 5344132,
+          "operations_per_second": 4677.4678546478735,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            28261,
+            28261
+          ],
+          "retained_heap_after_bytes_range": [
+            28261,
+            28261
+          ],
+          "process_peak_rss_kib_range": [
+            1512,
+            1516
+          ],
+          "observed_processes_range": [
+            3,
+            3
+          ]
+        },
+        {
+          "case": "basic",
+          "implementation": "sysinfo",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 362348.5266666667,
+          "median_ns": 242610.5,
+          "p95_ns": 367832,
+          "p99_ns": 3695481,
+          "max_ns": 6590887,
+          "operations_per_second": 2759.773881790679,
+          "allocations_per_op": 98,
+          "allocated_bytes_per_op": 60977,
+          "peak_extra_live_bytes": 33694,
+          "retained_heap_before_bytes_range": [
+            6347,
+            6347
+          ],
+          "retained_heap_after_bytes_range": [
+            6347,
+            6347
+          ],
+          "process_peak_rss_kib_range": [
+            1508,
+            1512
+          ],
+          "observed_processes_range": [
+            3,
+            3
+          ]
+        }
+      ],
+      "comparisons": [
+        {
+          "case": "cpu",
+          "comparable": true,
+          "median_speedup": 1.7666274694261523,
+          "mean_speedup": 1.8957410219072808,
+          "p99_speedup": 0.44904302084122477
+        },
+        {
+          "case": "basic",
+          "comparable": true,
+          "median_speedup": 1.5330595093284467,
+          "mean_speedup": 1.6948735856623511,
+          "p99_speedup": 2.54312495956992
+        }
+      ],
+      "failed_runs": []
+    },
+    {
+      "name": "scaling/100",
+      "source_commit": "b469697a422d84b5e75cab2f2316f7f21d6fe036",
+      "binary_sha256": "5be96c68848fce745b6489e76dbad649b279c4b53918dce532ecfba5ca823723",
+      "time_utc": "2026-11-12T10:08:13Z",
+      "environment_archive_path": "scaling/100/environment.json",
+      "hardware": {
+        "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "logical_cpus": 9,
+        "memory": {
+          "MemTotal": 10475802624,
+          "MemAvailable": 5294174208
+        },
+        "os_release": "PRETTY_NAME=\"Debian GNU/Linux 13 (trixie)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"13\"\nVERSION=\"13 (trixie)\"\nVERSION_CODENAME=trixie\nDEBIAN_VERSION_FULL=13.6\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"\n",
+        "kernel": "6.18.57",
+        "architecture": "x86_64",
+        "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
+        "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+        "profile": "release; thin LTO; codegen-units=1",
+        "rustflags": ""
+      },
+      "visible_processes_before_benchmark_child": 99,
+      "requested_visible_processes": 100,
+      "spawned": 96,
+      "spawn_error": null,
+      "process_scope_verified": true,
+      "network_scope_verified": null,
+      "sample_method": "All raw samples pooled across repeats; nearest-rank P95/P99; reciprocal mean excludes pacing sleeps; descriptive statistics, not confidence bounds",
+      "results": [
+        {
+          "case": "enumerate",
+          "implementation": "zsys",
+          "scope": "zsys_only",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 18260.853333333333,
+          "median_ns": 17232.5,
+          "p95_ns": 17660,
+          "p99_ns": 36097,
+          "max_ns": 111995,
+          "operations_per_second": 54761.95343919671,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            12805,
+            12805
+          ],
+          "retained_heap_after_bytes_range": [
+            12805,
+            12805
+          ],
+          "process_peak_rss_kib_range": [
+            1308,
+            1496
+          ],
+          "observed_processes_range": [
+            100,
+            100
+          ]
+        },
+        {
+          "case": "enumerate_std",
+          "implementation": "zsys",
+          "scope": "zsys_only",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 40703.61,
+          "median_ns": 35391.5,
+          "p95_ns": 63149,
+          "p99_ns": 119317,
+          "max_ns": 460841,
+          "operations_per_second": 24567.845456459512,
+          "allocations_per_op": 304,
+          "allocated_bytes_per_op": 1294,
+          "peak_extra_live_bytes": 78,
+          "retained_heap_before_bytes_range": [
+            4613,
+            4613
+          ],
+          "retained_heap_after_bytes_range": [
+            4613,
+            4613
+          ],
+          "process_peak_rss_kib_range": [
+            1500,
+            1504
+          ],
+          "observed_processes_range": [
+            100,
+            100
+          ]
+        },
+        {
+          "case": "process_all",
+          "implementation": "zsys",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 522269.26,
+          "median_ns": 481721.5,
+          "p95_ns": 737711,
+          "p99_ns": 873056,
+          "max_ns": 898541,
+          "operations_per_second": 1914.721153605709,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            29845,
+            29845
+          ],
+          "retained_heap_after_bytes_range": [
+            29845,
+            29845
+          ],
+          "process_peak_rss_kib_range": [
+            1396,
+            1528
+          ],
+          "observed_processes_range": [
+            100,
+            100
+          ]
+        },
+        {
+          "case": "process_all",
+          "implementation": "sysinfo",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 1201141.98,
+          "median_ns": 1096929.5,
+          "p95_ns": 1726944,
+          "p99_ns": 2791228,
+          "max_ns": 3555155,
+          "operations_per_second": 832.5410456472431,
+          "allocations_per_op": 664,
+          "allocated_bytes_per_op": 77800,
+          "peak_extra_live_bytes": 33695,
+          "retained_heap_before_bytes_range": [
+            58323,
+            58323
+          ],
+          "retained_heap_after_bytes_range": [
+            58323,
+            58323
+          ],
+          "process_peak_rss_kib_range": [
+            1652,
+            1720
+          ],
+          "observed_processes_range": [
+            100,
+            100
+          ]
+        },
+        {
+          "case": "process_all_std",
+          "implementation": "zsys",
+          "scope": "zsys_only",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 558528.0033333333,
+          "median_ns": 510146.5,
+          "p95_ns": 709018,
+          "p99_ns": 1179884,
+          "max_ns": 3141204,
+          "operations_per_second": 1790.420523289668,
+          "allocations_per_op": 304,
+          "allocated_bytes_per_op": 1294,
+          "peak_extra_live_bytes": 78,
+          "retained_heap_before_bytes_range": [
+            21653,
+            21653
+          ],
+          "retained_heap_after_bytes_range": [
+            21653,
+            21653
+          ],
+          "process_peak_rss_kib_range": [
+            1524,
+            1528
+          ],
+          "observed_processes_range": [
+            100,
+            100
+          ]
+        }
+      ],
+      "comparisons": [
+        {
+          "case": "process_all",
+          "comparable": true,
+          "median_speedup": 2.27710305643406,
+          "mean_speedup": 2.2998519575898455,
+          "p99_speedup": 3.197077850676245
+        }
+      ],
+      "failed_runs": []
+    },
+    {
+      "name": "scaling/1000",
+      "source_commit": "b469697a422d84b5e75cab2f2316f7f21d6fe036",
+      "binary_sha256": "5be96c68848fce745b6489e76dbad649b279c4b53918dce532ecfba5ca823723",
+      "time_utc": "2026-11-12T10:08:21Z",
+      "environment_archive_path": "scaling/1000/environment.json",
+      "hardware": {
+        "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "logical_cpus": 9,
+        "memory": {
+          "MemTotal": 10475802624,
+          "MemAvailable": 5113352192
+        },
+        "os_release": "PRETTY_NAME=\"Debian GNU/Linux 13 (trixie)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"13\"\nVERSION=\"13 (trixie)\"\nVERSION_CODENAME=trixie\nDEBIAN_VERSION_FULL=13.6\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"\n",
+        "kernel": "6.18.57",
+        "architecture": "x86_64",
+        "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
+        "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+        "profile": "release; thin LTO; codegen-units=1",
+        "rustflags": ""
+      },
+      "visible_processes_before_benchmark_child": 999,
+      "requested_visible_processes": 1000,
+      "spawned": 996,
+      "spawn_error": null,
+      "process_scope_verified": true,
+      "network_scope_verified": null,
+      "sample_method": "All raw samples pooled across repeats; nearest-rank P95/P99; reciprocal mean excludes pacing sleeps; descriptive statistics, not confidence bounds",
+      "results": [
+        {
+          "case": "enumerate",
+          "implementation": "zsys",
+          "scope": "zsys_only",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 243872.90333333332,
+          "median_ns": 179629.0,
+          "p95_ns": 350719,
+          "p99_ns": 2004551,
+          "max_ns": 3276206,
+          "operations_per_second": 4100.4965550976685,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            40965,
+            40965
+          ],
+          "retained_heap_after_bytes_range": [
+            40965,
+            40965
+          ],
+          "process_peak_rss_kib_range": [
+            1516,
+            1520
+          ],
+          "observed_processes_range": [
+            1000,
+            1000
+          ]
+        },
+        {
+          "case": "enumerate_std",
+          "implementation": "zsys",
+          "scope": "zsys_only",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 357128.0133333333,
+          "median_ns": 336838.0,
+          "p95_ns": 497958,
+          "p99_ns": 765729,
+          "max_ns": 992966,
+          "operations_per_second": 2800.1163803037425,
+          "allocations_per_op": 2104,
+          "allocated_bytes_per_op": 9144,
+          "peak_extra_live_bytes": 78,
+          "retained_heap_before_bytes_range": [
+            8197,
+            8197
+          ],
+          "retained_heap_after_bytes_range": [
+            8197,
+            8197
+          ],
+          "process_peak_rss_kib_range": [
+            1420,
+            1548
+          ],
+          "observed_processes_range": [
+            1000,
+            1000
+          ]
+        },
+        {
+          "case": "process_all",
+          "implementation": "zsys",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 6469022.413333333,
+          "median_ns": 6116222.5,
+          "p95_ns": 8610703,
+          "p99_ns": 12710857,
+          "max_ns": 18499560,
+          "operations_per_second": 154.58286215532277,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            310185,
+            310185
+          ],
+          "retained_heap_after_bytes_range": [
+            310185,
+            310185
+          ],
+          "process_peak_rss_kib_range": [
+            1824,
+            1952
+          ],
+          "observed_processes_range": [
+            1000,
+            1000
+          ]
+        },
+        {
+          "case": "process_all",
+          "implementation": "sysinfo",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 12648534.953333333,
+          "median_ns": 12157867.5,
+          "p95_ns": 15446409,
+          "p99_ns": 22666462,
+          "max_ns": 30831263,
+          "operations_per_second": 79.06053971384765,
+          "allocations_per_op": 6420.126666666667,
+          "allocated_bytes_per_op": 494179.12,
+          "peak_extra_live_bytes": 33712,
+          "retained_heap_before_bytes_range": [
+            856978,
+            856978
+          ],
+          "retained_heap_after_bytes_range": [
+            856978,
+            856978
+          ],
+          "process_peak_rss_kib_range": [
+            3312,
+            3384
+          ],
+          "observed_processes_range": [
+            1000,
+            1000
+          ]
+        },
+        {
+          "case": "process_all_std",
+          "implementation": "zsys",
+          "scope": "zsys_only",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 6768410.666666667,
+          "median_ns": 6075745.0,
+          "p95_ns": 8444019,
+          "p99_ns": 10206795,
+          "max_ns": 87581329,
+          "operations_per_second": 147.7451722787506,
+          "allocations_per_op": 2104,
+          "allocated_bytes_per_op": 9144,
+          "peak_extra_live_bytes": 78,
+          "retained_heap_before_bytes_range": [
+            277417,
+            277417
+          ],
+          "retained_heap_after_bytes_range": [
+            277417,
+            277417
+          ],
+          "process_peak_rss_kib_range": [
+            1824,
+            1952
+          ],
+          "observed_processes_range": [
+            1000,
+            1000
+          ]
+        }
+      ],
+      "comparisons": [
+        {
+          "case": "process_all",
+          "comparable": true,
+          "median_speedup": 1.9878066077550318,
+          "mean_speedup": 1.9552467351579084,
+          "p99_speedup": 1.783236330957071
+        }
+      ],
+      "failed_runs": []
+    },
+    {
+      "name": "scaling/500",
+      "source_commit": "b469697a422d84b5e75cab2f2316f7f21d6fe036",
+      "binary_sha256": "5be96c68848fce745b6489e76dbad649b279c4b53918dce532ecfba5ca823723",
+      "time_utc": "2026-11-12T10:08:14Z",
+      "environment_archive_path": "scaling/500/environment.json",
+      "hardware": {
+        "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "logical_cpus": 9,
+        "memory": {
+          "MemTotal": 10475802624,
+          "MemAvailable": 5215055872
+        },
+        "os_release": "PRETTY_NAME=\"Debian GNU/Linux 13 (trixie)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"13\"\nVERSION=\"13 (trixie)\"\nVERSION_CODENAME=trixie\nDEBIAN_VERSION_FULL=13.6\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"\n",
+        "kernel": "6.18.57",
+        "architecture": "x86_64",
+        "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
+        "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+        "profile": "release; thin LTO; codegen-units=1",
+        "rustflags": ""
+      },
+      "visible_processes_before_benchmark_child": 499,
+      "requested_visible_processes": 500,
+      "spawned": 496,
+      "spawn_error": null,
+      "process_scope_verified": true,
+      "network_scope_verified": null,
+      "sample_method": "All raw samples pooled across repeats; nearest-rank P95/P99; reciprocal mean excludes pacing sleeps; descriptive statistics, not confidence bounds",
+      "results": [
+        {
+          "case": "enumerate",
+          "implementation": "zsys",
+          "scope": "zsys_only",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 86333.91333333333,
+          "median_ns": 72274.0,
+          "p95_ns": 148332,
+          "p99_ns": 267406,
+          "max_ns": 876809,
+          "operations_per_second": 11582.93376716311,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            38917,
+            38917
+          ],
+          "retained_heap_after_bytes_range": [
+            38917,
+            38917
+          ],
+          "process_peak_rss_kib_range": [
+            1328,
+            1524
+          ],
+          "observed_processes_range": [
+            500,
+            500
+          ]
+        },
+        {
+          "case": "enumerate_std",
+          "implementation": "zsys",
+          "scope": "zsys_only",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 160258.55,
+          "median_ns": 138027.0,
+          "p95_ns": 261855,
+          "p99_ns": 368275,
+          "max_ns": 703655,
+          "operations_per_second": 6239.916684632427,
+          "allocations_per_op": 1104,
+          "allocated_bytes_per_op": 4294,
+          "peak_extra_live_bytes": 78,
+          "retained_heap_before_bytes_range": [
+            6149,
+            6149
+          ],
+          "retained_heap_after_bytes_range": [
+            6149,
+            6149
+          ],
+          "process_peak_rss_kib_range": [
+            1452,
+            1516
+          ],
+          "observed_processes_range": [
+            500,
+            500
+          ]
+        },
+        {
+          "case": "process_all",
+          "implementation": "zsys",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 3051530.8933333335,
+          "median_ns": 2972963.5,
+          "p95_ns": 3631045,
+          "p99_ns": 5179038,
+          "max_ns": 7519425,
+          "operations_per_second": 327.704367071851,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            173541,
+            173541
+          ],
+          "retained_heap_after_bytes_range": [
+            173541,
+            173541
+          ],
+          "process_peak_rss_kib_range": [
+            1760,
+            1764
+          ],
+          "observed_processes_range": [
+            500,
+            500
+          ]
+        },
+        {
+          "case": "process_all",
+          "implementation": "sysinfo",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 5899744.013333334,
+          "median_ns": 5807785.5,
+          "p95_ns": 6746771,
+          "p99_ns": 7511952,
+          "max_ns": 8865580,
+          "operations_per_second": 169.49887956833635,
+          "allocations_per_op": 2569.06,
+          "allocated_bytes_per_op": 252597.32,
+          "peak_extra_live_bytes": 33695,
+          "retained_heap_before_bytes_range": [
+            430487,
+            430487
+          ],
+          "retained_heap_after_bytes_range": [
+            430487,
+            430487
+          ],
+          "process_peak_rss_kib_range": [
+            2464,
+            2464
+          ],
+          "observed_processes_range": [
+            500,
+            500
+          ]
+        },
+        {
+          "case": "process_all_std",
+          "implementation": "zsys",
+          "scope": "zsys_only",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 3137994.18,
+          "median_ns": 2983496.5,
+          "p95_ns": 3653050,
+          "p99_ns": 6157765,
+          "max_ns": 8815767,
+          "operations_per_second": 318.6749058916355,
+          "allocations_per_op": 1104,
+          "allocated_bytes_per_op": 4294,
+          "peak_extra_live_bytes": 78,
+          "retained_heap_before_bytes_range": [
+            140773,
+            140773
+          ],
+          "retained_heap_after_bytes_range": [
+            140773,
+            140773
+          ],
+          "process_peak_rss_kib_range": [
+            1612,
+            1740
+          ],
+          "observed_processes_range": [
+            500,
+            500
+          ]
+        }
+      ],
+      "comparisons": [
+        {
+          "case": "process_all",
+          "comparable": true,
+          "median_speedup": 1.953534074669938,
+          "mean_speedup": 1.933371877775342,
+          "p99_speedup": 1.4504531536551768
+        }
+      ],
+      "failed_runs": []
+    },
+    {
+      "name": "scaling/5000",
+      "source_commit": "b469697a422d84b5e75cab2f2316f7f21d6fe036",
+      "binary_sha256": "5be96c68848fce745b6489e76dbad649b279c4b53918dce532ecfba5ca823723",
+      "time_utc": "2026-11-12T10:08:36Z",
+      "environment_archive_path": "scaling/5000/environment.json",
+      "hardware": {
+        "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "logical_cpus": 9,
+        "memory": {
+          "MemTotal": 10475802624,
+          "MemAvailable": 4246265856
+        },
+        "os_release": "PRETTY_NAME=\"Debian GNU/Linux 13 (trixie)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"13\"\nVERSION=\"13 (trixie)\"\nVERSION_CODENAME=trixie\nDEBIAN_VERSION_FULL=13.6\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"\n",
+        "kernel": "6.18.57",
+        "architecture": "x86_64",
+        "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
+        "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+        "profile": "release; thin LTO; codegen-units=1",
+        "rustflags": ""
+      },
+      "visible_processes_before_benchmark_child": 4999,
+      "requested_visible_processes": 5000,
+      "spawned": 4996,
+      "spawn_error": null,
+      "process_scope_verified": true,
+      "network_scope_verified": null,
+      "sample_method": "All raw samples pooled across repeats; nearest-rank P95/P99; reciprocal mean excludes pacing sleeps; descriptive statistics, not confidence bounds",
+      "results": [
+        {
+          "case": "enumerate",
+          "implementation": "zsys",
+          "scope": "zsys_only",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 1818527.22,
+          "median_ns": 1680911.5,
+          "p95_ns": 2863807,
+          "p99_ns": 3328825,
+          "max_ns": 5405244,
+          "operations_per_second": 549.8955357951695,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            69637,
+            69637
+          ],
+          "retained_heap_after_bytes_range": [
+            69637,
+            69637
+          ],
+          "process_peak_rss_kib_range": [
+            1500,
+            1564
+          ],
+          "observed_processes_range": [
+            5000,
+            5000
+          ]
+        },
+        {
+          "case": "enumerate_std",
+          "implementation": "zsys",
+          "scope": "zsys_only",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 2566966.3133333335,
+          "median_ns": 2345666.0,
+          "p95_ns": 3870551,
+          "p99_ns": 6242447,
+          "max_ns": 12515949,
+          "operations_per_second": 389.5649096779343,
+          "allocations_per_op": 10104,
+          "allocated_bytes_per_op": 45790,
+          "peak_extra_live_bytes": 78,
+          "retained_heap_before_bytes_range": [
+            36869,
+            36869
+          ],
+          "retained_heap_after_bytes_range": [
+            36869,
+            36869
+          ],
+          "process_peak_rss_kib_range": [
+            1440,
+            1568
+          ],
+          "observed_processes_range": [
+            5000,
+            5000
+          ]
+        },
+        {
+          "case": "process_all",
+          "implementation": "zsys",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 46913629.07666667,
+          "median_ns": 43247219.0,
+          "p95_ns": 80089957,
+          "p99_ns": 93548041,
+          "max_ns": 201475801,
+          "operations_per_second": 21.315767287280018,
+          "allocations_per_op": 0,
+          "allocated_bytes_per_op": 0,
+          "peak_extra_live_bytes": 0,
+          "retained_heap_before_bytes_range": [
+            1151433,
+            1151433
+          ],
+          "retained_heap_after_bytes_range": [
+            1151433,
+            1151433
+          ],
+          "process_peak_rss_kib_range": [
+            3068,
+            3200
+          ],
+          "observed_processes_range": [
+            5000,
+            5000
+          ]
+        },
+        {
+          "case": "process_all",
+          "implementation": "sysinfo",
+          "scope": "matched_core",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 86400890.17666666,
+          "median_ns": 81204246.5,
+          "p95_ns": 110347491,
+          "p99_ns": 165681167,
+          "max_ns": 436399050,
+          "operations_per_second": 11.573954827956841,
+          "allocations_per_op": 35066.68666666667,
+          "allocated_bytes_per_op": 2391146.44,
+          "peak_extra_live_bytes": 33712,
+          "retained_heap_before_bytes_range": [
+            3430197,
+            3430197
+          ],
+          "retained_heap_after_bytes_range": [
+            3430197,
+            3430197
+          ],
+          "process_peak_rss_kib_range": [
+            8732,
+            8744
+          ],
+          "observed_processes_range": [
+            5000,
+            5000
+          ]
+        },
+        {
+          "case": "process_all_std",
+          "implementation": "zsys",
+          "scope": "zsys_only",
+          "repeats": 3,
+          "samples": 300,
+          "mean_ns": 45465089.29333334,
+          "median_ns": 43824364.5,
+          "p95_ns": 57076688,
+          "p99_ns": 67691276,
+          "max_ns": 84161843,
+          "operations_per_second": 21.994897965517303,
+          "allocations_per_op": 10104,
+          "allocated_bytes_per_op": 45790,
+          "peak_extra_live_bytes": 78,
+          "retained_heap_before_bytes_range": [
+            1118665,
+            1118665
+          ],
+          "retained_heap_after_bytes_range": [
+            1118665,
+            1118665
+          ],
+          "process_peak_rss_kib_range": [
+            3128,
+            3188
+          ],
+          "observed_processes_range": [
+            5000,
+            5000
+          ]
+        }
+      ],
+      "comparisons": [
+        {
+          "case": "process_all",
+          "comparable": true,
+          "median_speedup": 1.8776755679943258,
+          "mean_speedup": 1.8417012684196645,
+          "p99_speedup": 1.7710810961824417
+        }
+      ],
+      "failed_runs": []
+    }
+  ],
+  "targets": [
+    {
+      "group": "paced",
+      "case": "cpu",
+      "target_ns": 5000,
+      "scope": "All nine online logical CPUs plus aggregate, real 210ms interval",
+      "median_ns": 42520.0,
+      "mean_ns": 60938.79666666667,
+      "p99_ns": 514797,
+      "median_meets_target": false,
+      "mean_meets_target": false,
+      "p99_meets_target": false
+    },
+    {
+      "group": "hot",
+      "case": "memory",
+      "target_ns": 3000,
+      "scope": "RAM/swap counters",
+      "median_ns": 3187.5,
+      "mean_ns": 3647.753,
+      "p99_ns": 12998,
+      "median_meets_target": false,
+      "mean_meets_target": false,
+      "p99_meets_target": false
+    },
+    {
+      "group": "network-fixed",
+      "case": "network",
+      "target_ns": 30000,
+      "scope": "Loopback interface full counters+IP/MAC/MTU/link metadata, ioctl fallback in restricted namespace",
+      "median_ns": 17524.5,
+      "mean_ns": 27969.983666666667,
+      "p99_ns": 128021,
+      "median_meets_target": true,
+      "mean_meets_target": true,
+      "p99_meets_target": false
+    },
+    {
+      "group": "hot",
+      "case": "disk",
+      "target_ns": 10000,
+      "scope": "11 fixed sysinfo-visible overlay mount capacities",
+      "median_ns": 7001.0,
+      "mean_ns": 8462.145,
+      "p99_ns": 58890,
+      "median_meets_target": true,
+      "mean_meets_target": true,
+      "p99_meets_target": false
+    },
+    {
+      "group": "hot",
+      "case": "disk_io",
+      "target_ns": 10000,
+      "scope": "All visible block devices and partitions; no sysinfo-equivalent baseline",
+      "median_ns": 14158.5,
+      "mean_ns": 16808.097333333335,
+      "p99_ns": 77551,
+      "median_meets_target": false,
+      "mean_meets_target": false,
+      "p99_meets_target": false
+    },
+    {
+      "group": "hot",
+      "case": "process_single",
+      "target_ns": 20000,
+      "scope": "Single current PID common fields with statm RSS",
+      "median_ns": 4281.0,
+      "mean_ns": 5512.230666666666,
+      "p99_ns": 45359,
+      "median_meets_target": true,
+      "mean_meets_target": true,
+      "p99_meets_target": false
+    },
+    {
+      "group": "hot",
+      "case": "process_all",
+      "target_ns": 1000000,
+      "scope": "Three visible process core records",
+      "median_ns": 16857.0,
+      "mean_ns": 19280.866666666665,
+      "p99_ns": 90308,
+      "median_meets_target": true,
+      "mean_meets_target": true,
+      "p99_meets_target": true
+    },
+    {
+      "group": "paced",
+      "case": "basic",
+      "target_ns": 1000000,
+      "scope": "CPU/RAM/swap/three process core records, excludes network/disk",
+      "median_ns": 158252.5,
+      "mean_ns": 213790.88666666666,
+      "p99_ns": 1453126,
+      "median_meets_target": true,
+      "mean_meets_target": true,
+      "p99_meets_target": false
+    },
+    {
+      "group": "scaling/100",
+      "case": "process_all",
+      "actual_process_count": 100,
+      "target_ns": 1000000,
+      "median_ns": 481721.5,
+      "mean_ns": 522269.26,
+      "p99_ns": 873056,
+      "median_meets_target": true,
+      "mean_meets_target": true,
+      "p99_meets_target": true
+    },
+    {
+      "group": "scaling/500",
+      "case": "process_all",
+      "actual_process_count": 500,
+      "target_ns": 1000000,
+      "median_ns": 2972963.5,
+      "mean_ns": 3051530.8933333335,
+      "p99_ns": 5179038,
+      "median_meets_target": false,
+      "mean_meets_target": false,
+      "p99_meets_target": false
+    },
+    {
+      "group": "scaling/1000",
+      "case": "process_all",
+      "actual_process_count": 1000,
+      "target_ns": 1000000,
+      "median_ns": 6116222.5,
+      "mean_ns": 6469022.413333333,
+      "p99_ns": 12710857,
+      "median_meets_target": false,
+      "mean_meets_target": false,
+      "p99_meets_target": false
+    },
+    {
+      "group": "scaling/5000",
+      "case": "process_all",
+      "actual_process_count": 5000,
+      "target_ns": 1000000,
+      "median_ns": 43247219.0,
+      "mean_ns": 46913629.07666667,
+      "p99_ns": 93548041,
+      "median_meets_target": false,
+      "mean_meets_target": false,
+      "p99_meets_target": false
+    }
+  ],
+  "unavailable": [
+    {
+      "case": "full",
+      "target_ns": 1000000,
+      "reason": "Network parity gate failed because sysinfo returned no interfaces in this environment"
+    },
+    {
+      "case": "process_all",
+      "requested_processes": 10000,
+      "reason": "Memory safety guard stopped development population at6340; no final10000 result"
+    }
+  ]
+}

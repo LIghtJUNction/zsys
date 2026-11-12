@@ -1,0 +1,60 @@
+name: Validate development patch
+on:
+  push:
+    branches: ['work/**']
+    paths: ['.development/change.json']
+permissions:
+  contents: write
+concurrency:
+  group: development-patch-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      DEVELOPMENT_BRANCH: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Check base, checksum and apply staged changes
+        run: |
+          python3 - <<'PY'
+          import base64, gzip, hashlib, io, json, os, pathlib, subprocess
+          source = pathlib.Path('.development/change.json')
+          item = json.loads(source.read_text())
+          parent = subprocess.check_output(['git', 'rev-parse', 'HEAD^'], text=True).strip()
+          if parent != item['base']: raise SystemExit('Base changed; refusing to overwrite work')
+          packed = base64.b64decode(item['patch'], validate=True)
+          patch = gzip.GzipFile(fileobj=io.BytesIO(packed)).read(4194305)
+          if len(patch) > 4194304: raise SystemExit('Patch too large')
+          if hashlib.sha256(patch).hexdigest() != item['sha256']: raise SystemExit('Checksum mismatch')
+          subprocess.run(['git', 'apply', '--check', '-'], input=patch, check=True)
+          subprocess.run(['git', 'apply', '-'], input=patch, check=True)
+          pathlib.Path(os.environ['RUNNER_TEMP'], 'zsys-change.json').write_text(json.dumps(item))
+          source.unlink()
+          PY
+      - run: cargo fmt --all -- --check
+      - run: cargo fmt --manifest-path benchmarks/Cargo.toml -- --check
+      - run: cargo test --locked --all-features
+      - run: cargo test --locked --no-default-features
+      - run: cargo clippy --locked --all-targets --all-features -- -D warnings
+      - run: cargo build --locked --release --manifest-path benchmarks/Cargo.toml
+      - name: Commit validated tree without overwriting concurrent changes
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, subprocess
+          item = json.loads(pathlib.Path(os.environ['RUNNER_TEMP'], 'zsys-change.json').read_text())
+          def run(*args): return subprocess.check_output(args, text=True).strip()
+          run('git', 'add', '-A')
+          if run('git', 'write-tree') != item['expected_tree']: raise SystemExit('Unexpected file changes; refusing commit')
+          run('git', 'config', 'user.name', 'github-actions[bot]')
+          run('git', 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com')
+          run('git', 'commit', '-m', item['message'])
+          run('git', 'push', 'origin', 'HEAD:' + os.environ['DEVELOPMENT_BRANCH'])
+          print('Validated commit:', run('git', 'rev-parse', 'HEAD'))
+          PY

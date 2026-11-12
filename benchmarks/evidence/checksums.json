@@ -1,0 +1,12 @@
+[
+  {
+    "path": "development-summary.json",
+    "bytes": 130851,
+    "sha256": "dec203a1f79478eda85ae4fc0bc295ba3595e8b877838fb24d12770b17d784d5"
+  },
+  {
+    "path": "development-raw.tar.gz",
+    "bytes": 489878,
+    "sha256": "e983c0d2b6bc2aec1017fab7ad94bb5ba6dd7d8e8c47212d21ae7411e57dca2f"
+  }
+]

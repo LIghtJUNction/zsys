@@ -1,0 +1,36 @@
+name: Benchmark
+on:
+  push:
+    branches: [main, 'work/**']
+    paths: ['src/**', 'benchmarks/*.py', 'benchmarks/src/**', 'benchmarks/Cargo.*', '.github/workflows/benchmark.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: benchmark-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Verify exact comparison dependency
+        run: |
+          cargo build --locked --release --manifest-path benchmarks/Cargo.toml
+          cargo tree --locked --manifest-path benchmarks/Cargo.toml
+          cargo tree --locked --edges normal
+      - name: Paired refresh and construction measurements
+        run: python3 benchmarks/run.py --samples 1000 --paced-samples 100 --cases memory cpu cpu_hot network network_counters disk disk_io process_single process_all enumerate enumerate_std basic basic_hot cold_process_single cold_process_all cold_basic full
+      - name: Controlled process scales
+        run: python3 benchmarks/scale.py --samples 100 --repeats 3
+      - name: Retain raw evidence and resolved lockfile
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-${{ github.sha }}
+          path: |
+            benchmark-results/
+            benchmarks/Cargo.lock
+          retention-days: 90

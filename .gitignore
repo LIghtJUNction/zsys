@@ -1,3 +1,7 @@
 /target
 *.profraw
 criterion/
+/benchmarks/target
+/benchmark-results
+__pycache__/
+/benchmarks/results/

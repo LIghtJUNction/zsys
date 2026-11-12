@@ -1,14 +1,45 @@
-//! Linux collector reusing a single read buffer.
-
-use std::{fs::{self, File}, io::{self, Read}, path::{Path, PathBuf}};
-use crate::{cpu::CpuTimes, memory::Memory, process::{ProcessCounters, ProcessId, ProcessState}};
-use super::parse::{parse_cpu_stat, parse_meminfo, parse_process_stat, ParseError};
+//! Small compatibility collector. Stateful process users should use `Processes` directly.
+use super::io::CachedFile;
+use super::parse::{ParseError, parse_cpu_stat, parse_meminfo};
+use crate::{
+    cpu::CpuTimes,
+    memory::Memory,
+    process::{ProcessCounters, ProcessId, ProcessState},
+};
+use std::path::{Path, PathBuf};
+use std::{fmt, io};
 
 #[derive(Debug)]
-pub enum LinuxError { Io(io::Error), Parse(ParseError) }
-impl From<io::Error> for LinuxError { fn from(e: io::Error) -> Self { Self::Io(e) } }
-impl From<ParseError> for LinuxError { fn from(e: ParseError) -> Self { Self::Parse(e) } }
-
+pub enum LinuxError {
+    Io(io::Error),
+    Parse(ParseError),
+}
+impl From<io::Error> for LinuxError {
+    fn from(e: io::Error) -> Self {
+        Self::Io(e)
+    }
+}
+impl From<ParseError> for LinuxError {
+    fn from(e: ParseError) -> Self {
+        Self::Parse(e)
+    }
+}
+impl fmt::Display for LinuxError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Io(e) => e.fmt(f),
+            Self::Parse(e) => e.fmt(f),
+        }
+    }
+}
+impl std::error::Error for LinuxError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Io(e) => Some(e),
+            Self::Parse(e) => Some(e),
+        }
+    }
+}
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ProcessRecord {
     pub id: ProcessId,
@@ -16,54 +47,46 @@ pub struct ProcessRecord {
     pub state: ProcessState,
     pub counters: ProcessCounters,
 }
-
-pub struct LinuxCollector { proc_root: PathBuf, buffer: Vec<u8> }
-impl Default for LinuxCollector { fn default() -> Self { Self::new() } }
+pub struct LinuxCollector {
+    proc_root: PathBuf,
+    cpu: CachedFile,
+    memory: CachedFile,
+    processes: Option<super::Processes>,
+}
+impl Default for LinuxCollector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 impl LinuxCollector {
     pub fn new() -> Self {
-        Self { proc_root: PathBuf::from("/proc"), buffer: Vec::with_capacity(16 * 1024) }
+        Self::with_proc_root("/proc")
     }
     pub fn with_proc_root(path: impl AsRef<Path>) -> Self {
-        Self { proc_root: path.as_ref().to_path_buf(), buffer: Vec::with_capacity(16 * 1024) }
-    }
-    fn read(&mut self, name: &str) -> Result<&[u8], LinuxError> {
-        self.buffer.clear();
-        let mut file = File::open(self.proc_root.join(name))?;
-        file.read_to_end(&mut self.buffer)?;
-        Ok(&self.buffer)
+        Self {
+            proc_root: path.as_ref().to_owned(),
+            cpu: CachedFile::new(path.as_ref().join("stat")),
+            memory: CachedFile::new(path.as_ref().join("meminfo")),
+            processes: None,
+        }
     }
     pub fn cpu_times(&mut self) -> Result<CpuTimes, LinuxError> {
-        let bytes = self.read("stat")?;
-        Ok(parse_cpu_stat(bytes)?)
+        Ok(parse_cpu_stat(self.cpu.read()?)?)
     }
     pub fn memory(&mut self) -> Result<Memory, LinuxError> {
-        let bytes = self.read("meminfo")?;
-        Ok(parse_meminfo(bytes)?)
+        Ok(parse_meminfo(self.memory.read()?)?)
     }
-
-    /// Enumerates readable numeric PID directories and reads each process stat record.
-    /// Processes that exit or become inaccessible during the scan are skipped.
+    /// Compatibility API allocates an owned result. `Processes::refresh` retains its table instead.
     pub fn processes(&mut self) -> Result<Vec<ProcessRecord>, LinuxError> {
-        let entries = fs::read_dir(&self.proc_root)?;
-        let mut records = Vec::new();
-        for entry in entries {
-            let entry = match entry { Ok(v) => v, Err(_) => continue };
-            let Some(pid) = entry.file_name().to_str().and_then(|s| s.parse::<u32>().ok()) else { continue };
-            self.buffer.clear();
-            let path = entry.path().join("stat");
-            let mut file = match File::open(path) { Ok(v) => v, Err(_) => continue };
-            if file.read_to_end(&mut self.buffer).is_err() { continue; }
-            if let Ok((parsed_pid, state, counters, parent_pid, start_time_ticks)) = parse_process_stat(&self.buffer) {
-                if parsed_pid == pid {
-                    records.push(ProcessRecord {
-                        id: ProcessId { pid, start_time_ticks },
-                        parent_pid,
-                        state,
-                        counters,
-                    });
-                }
-            }
+        if self.processes.is_none() {
+            self.processes = Some(super::Processes::with_proc_root(&self.proc_root)?);
         }
-        Ok(records)
+        let processes = self.processes.as_mut().expect("initialized above");
+        processes.refresh()?;
+        Ok(processes
+            .iter()
+            .filter(|p| p.availability == super::Availability::Fresh)
+            .map(|p| ProcessRecord { id: p.id, parent_pid: p.parent_pid, state: p.state, counters: p.counters })
+            .collect())
     }
 }

@@ -1,0 +1,15 @@
+[package]
+name = "zsys-benchmarks"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+zsys = { path = ".." }
+sysinfo = { version = "=0.40.3", default-features = false, features = ["system", "network", "disk"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
