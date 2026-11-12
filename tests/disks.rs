@@ -72,3 +72,38 @@ fn native_capacity_and_live_discovery() {
     assert!(Filesystem::new("/definitely-missing-zsys-path").unwrap().refresh().is_err());
     assert!(Filesystem::new(std::path::Path::new("\0")).is_err());
 }
+
+#[test]
+#[cfg(target_pointer_width = "64")]
+fn capacity_errors_retain_timestamp_and_explicit_error() {
+    let f = Fixture::new();
+    let location = f.0.join("capacity-probe");
+    fs::create_dir(&location).unwrap();
+    let mut filesystem = Filesystem::new(&location).unwrap();
+    let first = filesystem.refresh().unwrap();
+    let sample = filesystem.sample();
+    fs::remove_dir(&location).unwrap();
+    assert!(filesystem.refresh().is_err());
+    assert_eq!(filesystem.capacity(), Some(first));
+    assert_eq!(filesystem.sample(), sample);
+    assert_eq!(filesystem.last_error(), Some(std::io::ErrorKind::NotFound));
+    fs::create_dir(&location).unwrap();
+    filesystem.refresh().unwrap();
+    assert_eq!(filesystem.last_error(), None);
+    assert_eq!(filesystem.sample().sequence, sample.sequence + 1);
+}
+
+#[test]
+fn device_rename_or_counter_reset_invalidates_delta() {
+    let f = Fixture::new();
+    let stat = f.0.join("diskstats");
+    fs::write(&stat, "8 0 sda 10 0 10 0 10 0 20 0 0 0 0\n").unwrap();
+    let mut disks = DiskIoCollector::with_proc_root(&f.0);
+    disks.refresh().unwrap();
+    fs::write(&stat, "8 0 replacement 20 0 20 0 20 0 40 0 0 0 0\n").unwrap();
+    disks.refresh().unwrap();
+    assert!(disks.get(8, 0).unwrap().delta.is_none());
+    fs::write(&stat, "8 0 replacement 1 0 1 0 1 0 2 0 0 0 0\n").unwrap();
+    disks.refresh().unwrap();
+    assert!(disks.get(8, 0).unwrap().delta.is_none());
+}

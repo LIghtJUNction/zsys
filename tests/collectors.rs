@@ -77,6 +77,11 @@ fn network_resets_and_malformed_data() {
     assert!(networks.refresh_counters().is_err());
     assert_eq!(networks.sample(), previous);
     assert!(networks.get(b"eth0").is_some());
+    let duplicate = format!("{}eth0: 20 1 0 0 0 0 0 0 20 1 0 0 0 0 0 0\n", net(10, 10));
+    fs::write(f.0.join("net/dev"), duplicate).unwrap();
+    assert!(networks.refresh_counters().is_err());
+    assert_eq!(networks.sample(), previous);
+    assert_eq!(networks.get(b"eth0").unwrap().counters.received_bytes, 1);
 }
 #[test]
 fn live_cpu_memory_and_network_addresses() {
