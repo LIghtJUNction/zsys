@@ -13,3 +13,6 @@ sysinfo = { version = "=0.40.3", default-features = false, features = ["system",
 [profile.release]
 lto = "thin"
 codegen-units = 1
+
+[features]
+count-alloc = []

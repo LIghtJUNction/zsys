@@ -3,3 +3,5 @@
 criterion/
 /benchmarks/target
 /benchmark-results
+/benchmarks/target-counted
+__pycache__/
