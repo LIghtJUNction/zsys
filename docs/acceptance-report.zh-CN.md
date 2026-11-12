@@ -1,8 +1,8 @@
 # zsys 0.1.0 候选版本验收报告
 
-**记录日期：2026-11-12（UTC）。状态：Linux 工程与本地性能验收已形成证据，发布闭环尚待完成。**
+**记录日期：2026-11-12（UTC）。状态：Linux 工程、本地与独立远端性能证据已完成审查；PR 已合并，两次上传均被凭据认证拒绝，crates.io 发布和 GitHub Release 尚未完成。**
 
-zsys 已具备实际可用的 Linux CPU、内存、进程、磁盘、网络采集及可选硬件信息，核心和 Linux 后端没有第三方运行时 crate。指定原生代码提交的两次 GitHub CI 均有 11 个 job 成功，本地公平基准已覆盖 100、500、1,000、5,000 个实际进程。现有结果支持部分路径的延迟与分配优势，同时也显示 CPU P99、固定缓冲占用和大规模刷新目标仍有不足。crates.io 和 GitHub Release 尚未确认成功，故本报告不宣布最终验收全部完成。[CI 证据](#3-测试ci-与资源验证)、[基准证据](#4-基准环境方法与公平性)、[发布状态](#9-版本发布与交付位置)分别给出可核查依据。
+zsys 已具备实际可用的 Linux CPU、内存、进程、磁盘、网络采集及可选硬件信息，核心和 Linux 后端没有第三方运行时 crate。指定原生代码提交的两次 GitHub CI 均有 11 个 job 成功，本地公平基准已覆盖 100、500、1,000、5,000 个实际进程，独立 GitHub runner 补齐了完整网络和 `full` 的有效对比。远端 10,000 规模已执行，但双方实际进程数量范围不同，因此拒绝给出倍率。现有结果支持部分路径的延迟与分配优势，同时也显示本地 CPU P99、网络保留内存和大规模刷新目标仍有不足。PR 已合并，两次发布候选均通过完整验证与打包，但上传都收到 `403 Forbidden: authentication failed`；第二次日志确认使用 `CARGO_REGISTY_TOKEN`。发布受 registry 凭据认证阻塞，Tag 与 GitHub Release 步骤因此跳过。故本报告不宣布最终验收全部完成。[CI 证据](#3-测试ci-与资源验证)、[基准证据](#4-基准环境方法与公平性)、[发布状态](#9-版本发布与交付位置)分别给出可核查依据。
 
 ## 1. 交付范围与验收边界
 
@@ -13,11 +13,11 @@ zsys 已具备实际可用的 Linux CPU、内存、进程、磁盘、网络采�
 | 核心 `no_std` | 已编译验证 | Rust 1.95、bare-metal、WASM；不包含原生 OS 采集 |
 | 运行时第三方依赖为零 | 已校验 | [Cargo.toml](../Cargo.toml)、[包检查](../scripts/check-package.py) |
 | 单元／集成／文档测试 | 已通过指定提交的 CI | Linux 55 项单元／集成测试＋2 项文档测试 |
-| 可复现 Benchmark、真实性能和内存测量 | 本地已完成；独立远端运行待检查 | 固定 sysinfo `=0.40.3`、原始数据、环境及 checksum |
+| 可复现 Benchmark、真实性能和内存测量 | 本地与独立远端已完成审查 | 固定 sysinfo `=0.40.3`；远端 165 个原始文件、80,300 条样本；失败项不隐藏 |
 | 文档与示例 | 已提供 | README、语义、平台、架构、基准、报告；README 两个完整 Rust 示例已编译 |
 | 跨平台 CI | 已通过指定提交的 11-job 矩阵 | Windows/macOS 只验证 core；Linux 后端在原生 Linux 运行 |
-| crates.io 发布 | **待确认** | 发布工作流已实现，实际成功必须以 registry 校验为准 |
-| GitHub Release | **待确认** | 必须与 crate 版本、Tag、候选提交一致 |
+| crates.io 发布 | **两次认证拒绝；未完成** | 第二次确认选择 `CARGO_REGISTY_TOKEN`，仍收到 403；两次完整 CI 和打包均通过 |
+| GitHub Release | **未完成** | 上传失败后 Tag／Release 步骤跳过；须随同一候选恢复发布 |
 | 全平台原生后端 | **未完成** | Windows/macOS 及后续平台仍待开发 |
 
 当前阶段完成的是 Linux 实现与有明确范围的测量。用户设定的最终验收包含两个实际发布结果，这些条件未核验之前，版本仍是候选。进度以 [progress.md](progress.md) 和对应 Actions 运行记录更新。
@@ -60,7 +60,7 @@ Linux x86_64 glibc、aarch64 glibc、x86_64 musl 已在原生 CI 中运行。手
 
 ### 3.1 指定提交的完整 CI
 
-[分支运行 43198501256](https://github.com/LIghtJUNction/zsys/actions/runs/43198501256) 测试提交 `89e6c6c020869f3e6b37ea393bfc1040bd336d71`；[PR 运行 43198509342](https://github.com/LIghtJUNction/zsys/actions/runs/43198509342) 测试 GitHub 生成的合并提交 `4a012c3132f0b948de901821e4f25b2b986d06fd`。两次均为 **11 个 job 全部成功**。PR 测试合并提交是验证对象，不代表 PR 已经合入 `main`。
+[分支运行 43198501256](https://github.com/LIghtJUNction/zsys/actions/runs/43198501256) 测试提交 `89e6c6c020869f3e6b37ea393bfc1040bd336d71`；[PR 运行 43198509342](https://github.com/LIghtJUNction/zsys/actions/runs/43198509342) 测试 GitHub 生成的合并提交 `4a012c3132f0b948de901821e4f25b2b986d06fd`。两次均为 **11 个 job 全部成功**。PR 测试合并提交是当时的验证对象；随后 [PR #1](https://github.com/LIghtJUNction/zsys/pull/1) 已正式合并到 `main` 的 [4a137a3b6918c9307056dbba674345733be84acb](https://github.com/LIghtJUNction/zsys/commit/4a137a3b6918c9307056dbba674345733be84acb)。合并后的 [发布运行 43201351434](https://github.com/LIghtJUNction/zsys/actions/runs/43201351434) 再次通过全部 11 个验证 job 和打包，失败发生在 crates.io 认证环节。
 
 | 检查组 | 已执行范围 |
 |---|---|
@@ -88,7 +88,7 @@ Ubuntu 24.04 [完整日志](https://github.com/LIghtJUNction/zsys/actions/runs/4
 
 ## 4. 基准环境、方法与公平性
 
-### 4.1 实际环境
+### 4.1 本地实际环境
 
 | 字段 | 本地最终测量记录 |
 |---|---|
@@ -109,15 +109,31 @@ Ubuntu 24.04 [完整日志](https://github.com/LIghtJUNction/zsys/actions/runs/4
 
 进程对比在同一环境检查双方 PID 集合，并对受控空闲子进程验证公共字段。每一条原始测量还记录实际进程数；zsys 的部分失败扫描会拒绝作为可比结果。最终默认 RSS 已统一采用 `statm` 语义，早期 stat-only 的较低成本只保留为开发证据，不再计入公平性能结论。双方不枚举每个线程的独立 task，也不在核心刷新中无条件读取命令行、可执行文件与 UID／GID。[benchmark 源码](../benchmarks/src/main.rs) 保留范围和门禁。
 
-CPU 使用率要求两次真实读取。`cpu_hot` 的密集调用中，sysinfo 可以因最小更新间隔返回缓存，而 zsys 继续读计数器，因此它和 `basic_hot` 被标记 `different_freshness`，不能用该组数字算同范围胜负。报告的 CPU 和 basic 正面对比只使用等待 210 ms 的组。
+CPU 使用率要求两次真实读取。`cpu_hot` 的密集调用中，sysinfo 可以因最小更新间隔返回缓存，而 zsys 继续读计数器，因此它和 `basic_hot` 被标记 `different_freshness`，不能用该组数字算同范围胜负。报告的 CPU 和 basic 正面对比只使用等待 210 ms 且实际采集数量符合门禁的组。
 
 磁盘容量对比限定为双方一致的 11 个 overlay 挂载点，并仅刷新总量和可用空间等 storage 数据；它不等于块设备 I/O 或所有挂载发现。`process_inventory` 比较双方提供 PID／PPID／名称／启动标识的刷新操作；zsys 当前 `refresh` 还更新核心计数器，因此该用例描述公共返回需求，不能当成严格只读 PID 的成本。只枚举 PID 的 `enumerate` 没有假造 sysinfo 等价 API。
 
 本地 sysinfo 的网络列表为空，而 zsys 的后备路径能读到 loopback。完整网络门禁因此失败，`network` 和包含网络的 `full` 不生成对照倍率。网络修复后的 `network-fixed` 组覆盖旧 `hot` 网络行；只计数器路径和块 I/O 独立路径单列，不能与范围更大的 API 比速度。
 
+### 4.3 独立 GitHub runner 的环境与证据
+
+[运行 43198501217](https://github.com/LIghtJUNction/zsys/actions/runs/43198501217) 已于 2026-11-12 10:31:30 UTC 完成，工作流结论为 success。其源码固定为 `89e6c6c020869f3e6b37ea393bfc1040bd336d71`，全部组使用同一个干净源码构建的二进制。已下载并核验 [原始 ZIP](../benchmarks/evidence/github-89e6c6c.zip) 中 165 个原始测量文件、80,300 条样本的行数和 SHA-256；[汇总 JSON](../benchmarks/evidence/github-89e6c6c-summary.json)、[CSV](../benchmarks/evidence/github-89e6c6c-table.csv) 和 [产物校验和](../benchmarks/evidence/github-89e6c6c-checksums.json) 一并保留。
+
+| 字段 | 独立 GitHub runner |
+|---|---|
+| CPU／在线逻辑 CPU | AMD EPYC 7763，4 个；affinity 为 0–3 |
+| RAM | 16,760,348,672 B |
+| OS／kernel | Ubuntu 24.04.5 LTS，Linux 7.0.0-1017-azure，x86_64 |
+| Rust／编译 | Rust／Cargo 1.99.1，release、thin LTO、`codegen-units=1`，无额外 RUSTFLAGS |
+| 对照 | sysinfo 0.40.3，关闭默认 features，启用 system／network／disk |
+| 挂载容量范围 | 双方均为 `/`、`/boot`、`/boot/efi` 三个挂载点 |
+| 原始产物 | [artifact 13935995311](https://github.com/LIghtJUNction/zsys/actions/runs/43198501217/artifacts/13935995311)，523,591 B |
+
+这个 runner 与本地 Xeon／Debian 的硬件、内核、网络与挂载范围不同，不能将两台机器的延迟直接相减并归因于某次优化。远端普通热路径每个实现 3,000 样本，CPU／basic／full 与各规模组各 300 样本；`cold_basic` 的 zsys 有一次 repeat 失败，只剩 2,000 个成功样本，相关缺失明确保留。成功工作流仅表示流程完成，具体可比结论仍由每个用例的范围、实际数量和失败状态决定。
+
 ## 5. 与 sysinfo 0.40.3 的真实性能结果
 
-### 5.1 共同采集范围
+### 5.1 本地共同采集范围
 
 下表延迟单位均为 **μs**；完整精度、每次分配和峰值信息在 [final-table.csv](../benchmarks/evidence/final-table.csv)。全进程相关普通组为 3 个实际进程；`basic` 只组合 CPU、RAM／Swap 与进程核心记录，**不同于** `System::refresh_basic` 还包含网络计数器与块 I/O 的 API 范围。
 
@@ -142,7 +158,7 @@ CPU 使用率要求两次真实读取。`cpu_hot` 的密集调用中，sysinfo �
 
 CPU 中位延迟虽然为对照的约 1/1.77，但 **zsys 的 P95 与 P99 更差**：P99 514.797 μs 对 231.166 μs，约为对照的 **2.23 倍**。挂载容量和进程 inventory 的最大耗时也存在 zsys 更高的情况。未采用“只看平均值或中位数”的方式掩盖尾延迟；300 个 CPU 样本的 P99 仍需更多受控环境测量支持。
 
-### 5.2 实际进程规模
+### 5.2 本地实际进程规模
 
 以下全进程刷新包括核心身份、状态、CPU 累计值、RSS 和虚拟内存，单位为 **ms**。每个规模每个实现 300 个样本，原始行的实际记录数均与左栏一致。
 
@@ -155,9 +171,9 @@ CPU 中位延迟虽然为对照的约 1/1.77，但 **zsys 的 P95 与 P99 更差
 
 100 个进程在此环境的中位数、平均值和 P99 均低于 1 ms；500 个及以上没有达到 1 ms。5,000 进程虽然比 sysinfo 快，单轮中位数仍约 43 ms，不能把这个结果宣传为 1 kHz 全表采集能力。规模中包括 runner、shell 和 benchmark 本身，不能把“创建的 sleep 子进程数量”代替实际采集数。
 
-10,000 进程没有最终同范围结果。此前开发阶段在 6,340 个实际可见进程时触发可用内存保护；当时采用旧 stat-RSS 路径，数据保存在 [开发归档](../benchmarks/evidence/development-raw.tar.gz)，仅作为实验过程和资源上限记录。
+本地没有 10,000 进程最终同范围结果。独立远端已经执行该规模，但实际数量漂移使对照倍率无效，见 5.5 节。此前开发阶段在 6,340 个实际可见进程时触发可用内存保护；当时采用旧 stat-RSS 路径，数据保存在 [开发归档](../benchmarks/evidence/development-raw.tar.gz)，仅作为实验过程和资源上限记录。
 
-### 5.3 构造与首次刷新
+### 5.3 本地构造与首次刷新
 
 “冷”用例表示每次构造 collector、首次刷新并销毁，不进行 collector 预热。OS 缓存保持运行中的状态，不表示重启后的冷存储，也不是每条样本都重新启动可执行程序。`cold_basic` 首次 CPU 刷新只建立基线，没有有效使用率百分比，不能与经过真实间隔的 `basic` 视为同一状态。以下均为 μs，普通全表仍为 3 个进程。
 
@@ -169,7 +185,7 @@ CPU 中位延迟虽然为对照的约 1/1.77，但 **zsys 的 P95 与 P99 更差
 
 构造路径有明确收益，但不为首次 CPU 读数补造利用率；首次采样仍然建立基线。按需初始化减少了此类短命采集器不需要的状态，具体机制见 [架构](architecture.md)，数字见 [最终表格](../benchmarks/evidence/final-table.csv)。
 
-### 5.4 独立路径与原生枚举的取舍
+### 5.4 本地独立路径与原生枚举的取舍
 
 | zsys 独立用例 | Median | P99 | 说明 |
 |---|---:|---:|---|
@@ -181,11 +197,42 @@ CPU 中位延迟虽然为对照的约 1/1.77，但 **zsys 的 P95 与 P99 更差
 
 原生枚举的收益不能直接推广到完整刷新。5,000 进程全刷新中，Native 平均 46.914 ms、P99 93.548 ms；Std 平均 45.465 ms、P99 67.691 ms。Native 中位数略低，但平均值和 P99 未胜出。逐 PID 文件工作和运行环境对完整路径的贡献仍然很大，应保留两个可测实现，继续以数据选择，而不把“更底层”当成性能证明。
 
+### 5.5 独立远端结果与必须保留的失败项
+
+远端网络验证通过：实际接口、IP／掩码、MAC、MTU、链路速率和计数器范围符合公共字段门禁。`full` 组合 CPU、RAM／Swap、进程核心、完整网络及三个挂载容量，每次计时前间隔 210 ms，双方样本均为 **163 个进程**。这是指定组合范围的完整比较，不包含温度／GPU／CPU 频率或所有按需进程详情，也不同于库 `System::refresh_basic` 的计数器组合。[远端汇总](../benchmarks/evidence/github-89e6c6c-summary.json) 记录了门禁结果。
+
+下表单位为 **μs**；远端与本地分开统计，不混池计算分位数。
+
+| 远端用例 | 实现 | Mean | Median | P95 | P99 | Max | 倒数吞吐 ops/s |
+|---|---|---:|---:|---:|---:|---:|---:|
+| 完整网络 | zsys | 926.838 | 917.941 | 1,014.850 | 1,057.219 | 1,186.459 | 1,079 |
+| 完整网络 | sysinfo | 1,190.020 | 1,191.003 | 1,255.847 | 1,291.553 | 4,427.135 | 840 |
+| full，163 个进程 | zsys | 3,714.052 | 3,645.864 | 3,942.419 | 4,224.713 | 16,893.841 | 269 |
+| full，163 个进程 | sysinfo | 6,412.144 | 6,382.846 | 6,660.035 | 7,662.112 | 8,103.787 | 156 |
+
+中位延迟比 `sysinfo / zsys` 为完整网络 **1.297×**、`full` **1.751×**，P99 比值分别为 **1.222×** 和 **1.814×**。`full` 的 zsys 最大值 16.894 ms 仍高于 sysinfo 的 8.104 ms。网络约 918 μs 的中位数尚未达到 30 μs 目标，组合约 3.646 ms 尚未达到 1 ms，不能把“相对更快”写成“达到研发目标”。
+
+远端 CPU 结果与本地尾延迟结论不同：zsys 的 Median／P99 为 21.580／28.492 μs，sysinfo 为 32.416／50.273 μs，在该 runner 上，zsys 的这两项统计值均较低。但本地 CPU P99 劣势仍然有效，两个环境的结果应共同保留。绝对 5 μs 目标在两台机器的真实间隔 CPU 采样中都没有达到。
+
+远端采集过程中存在后台进程变化。以下为全进程核心刷新，延迟单位 **ms**；“实际范围”取每条测量的 `observed_processes`，优先于目录名或请求参数。
+
+| 请求规模 | 实际数量：zsys／sysinfo | zsys Median | sysinfo Median | zsys P99 | sysinfo P99 | 可比结论 |
+|---:|---|---:|---:|---:|---:|---|
+| 100 | 164／164 | 2.319 | 4.745 | 2.938 | 4.845 | 这是 164 进程结果；中位比 2.046× |
+| 500 | 500／500 | 7.330 | 15.534 | 8.305 | 16.320 | 中位比 2.119× |
+| 1,000 | 1,000／1,000 | 14.915 | 31.955 | 19.442 | 33.497 | 中位比 2.142× |
+| 5,000 | 4,997–5,000／4,998–5,000 | 80.876 | 171.013 | 102.958 | 223.496 | 数量范围不同，不给倍率 |
+| 10,000 | 10,000／9,997–10,000 | 168.027 | 346.490 | 228.714 | 456.325 | 已执行；数量范围不同，不给倍率 |
+
+500 和 1,000 的平均耗时分别为 zsys 7.365／15.025 ms、sysinfo 15.568／31.953 ms。请求 100 的组因为 runner 原有进程已经超过目标，没有额外创建子进程；按 100 进程标注会失真。5,000／10,000 行仅保留各自观测分布，既不计算速度倍率，也不使用它们宣称同范围内存节省。远端普通 `process_all` 的双方均为 168 个进程，其 Median 为 2.374／4.905 ms；`basic` 却分别出现 168–172 与 160–168，因而取消该用例的倍率。
+
+**一次 `cold_basic` 重复失败被完整保留。** zsys 的 repeat 0 检测到部分进程扫描，触发 `partial process scan is not comparable`，退出码 101；汇总记载 `failed_repeat_count = 1`。剩余两轮有 2,000 个成功样本，sysinfo 三轮为 3,000；这些成功样本仅供描述，整个用例不生成 headline 比值。工作流为 success、或其余重复耗时较低，都不能覆盖这个失败事实。[原始 ZIP](../benchmarks/evidence/github-89e6c6c.zip) 保留日志与空样本文件校验和，后续需在变化负载下复测。
+
 ## 6. 分配与峰值内存
 
 分配数据来自 Rust 全局分配器：累计成功的 `alloc`、`alloc_zeroed`、`realloc` 请求及请求字节。它不包含 C 库分配、分配器元数据、线程栈或映射；计数器本身的开销在计时中。保留堆扣除了保存测量行的 vector，进程 `VmHWM` 则包含可执行程序、加载器、分配器和 harness，不能解释成某个 collector 的独占峰值。[方法元数据](../benchmarks/evidence/overview.json) 和 [计量实现](../benchmarks/src/main.rs) 定义这些口径。
 
-下表 `分配次数 / 请求字节` 为每次刷新均值，`保留堆` 为预热后仍存活的 Rust 请求字节，`VmHWM` 列给出三轮测量的范围，单位 KiB。
+下表为本地数据；`分配次数 / 请求字节` 为每次刷新均值，`保留堆` 为预热后仍存活的 Rust 请求字节，`VmHWM` 列给出三轮测量的范围，单位 KiB。
 
 | 路径 | zsys 分配次数／B | sysinfo 分配次数／B | zsys 保留堆 B | sysinfo 保留堆 B | zsys VmHWM KiB | sysinfo VmHWM KiB |
 |---|---:|---:|---:|---:|---:|---:|
@@ -201,13 +248,26 @@ CPU 中位延迟虽然为对照的约 1/1.77，但 **zsys 的 P95 与 P99 更差
 
 这些稳定热路径在当前数据中没有 Rust 分配请求，但“零请求”不等于零占用。CPU、Memory 和小表组合路径保留了比 sysinfo 更大的缓冲；磁盘和 basic 的进程 RSS 范围也并非都更小。5,000 进程下，zsys 的保留堆与进程峰值明显较低，这才是本次数据能够支持的大规模内存优势。
 
-完整网络刷新仍平均分配 20 次／3,441 B，修复后的保留堆为 10,750 B；进程详情、发现新设备、硬件拥有型结果和扩容也可以分配。冷单 PID 路径 zsys 为 4 次／4,648 B，sysinfo 为 78 次／92,531 B，这里的请求总字节还可能超过任意时刻同时存活的字节数。完整字段可在 CSV 的 `peak_extra_live_bytes` 与保留字节列分别检查。
+本地完整网络刷新仍平均分配 20 次／3,441 B，修复后的保留堆为 10,750 B；进程详情、发现新设备、硬件拥有型结果和扩容也可以分配。冷单 PID 路径 zsys 为 4 次／4,648 B，sysinfo 为 78 次／92,531 B，这里的请求总字节还可能超过任意时刻同时存活的字节数。完整字段可在 CSV 的 `peak_extra_live_bytes` 与保留字节列分别检查。
 
 当前策略在规模下降后通常保留 Vec／HashMap 容量，以便下次复用。API 没有通用自动缩容或公开 reserve/shrink 策略，调用者可丢弃重建并接受差分基线重置。现有 soak 证明特定稳定路径没有增长，不替代长期变化负载下对历史峰值和资源生命周期的测量。
 
+### 远端网络与组合的内存取舍
+
+远端完整网络的分配次数下降，但请求字节、保留堆与进程 RSS 没有同步下降。计量口径与本地一致，不能只选分配次数一个指标来判断更省内存。
+
+| 远端路径／实现 | 每次分配次数 | 每次请求字节 B | 单次额外存活峰值 B | 采样后保留堆 B | 进程 VmHWM KiB |
+|---|---:|---:|---:|---:|---:|
+| 网络／zsys | 35 | 17,943 | 5,065 | 12,793 | 2,616–2,660 |
+| 网络／sysinfo | 134 | 9,129 | 4,322 | 1,671 | 2,536–2,600 |
+| full／zsys | 35.037 | 17,944.44 | 5,142 | 79,373–79,454 | 2,664–2,688 |
+| full／sysinfo | 1,234 | 142,284.36 | 33,712 | 112,423–112,439 | 2,776–2,836 |
+
+`full` 虽然获得更低的分配与保留占用，网络原子路径自身仍有改进空间。远端进程刷新也出现很小但非零的分配：168 进程普通刷新每次平均 0.00133 次、0.048 B，500／1,000 规模分别为 0.01／0.02333 次。真实 runner 的字段或进程变化可以引起扩容，所以零分配结论限定于已经验证的稳定路径，不能覆盖变化负载。完整计数与范围见 [远端 CSV](../benchmarks/evidence/github-89e6c6c-table.csv)。
+
 ## 7. 对原研发目标的逐项检查
 
-原目标没有指定只用中位数还是 P99 判定，本报告同时列出 Mean／Median／P99，避免选择最有利统计量。所有目标都属于指定内容与硬件下的研发目标，不是 API 保证。以下单位为 μs，进程规模另列。
+原目标没有指定只用中位数还是 P99 判定，本报告同时列出 Mean／Median／P99，避免选择最有利统计量。所有目标都属于指定内容与硬件下的研发目标，不是 API 保证。以下本地数据单位为 μs，进程规模另列。
 
 | 目标与测量范围 | 目标 | zsys Mean | Median | P99 | 判定 |
 |---|---:|---:|---:|---:|---|
@@ -225,9 +285,23 @@ CPU 中位延迟虽然为对照的约 1/1.77，但 **zsys 的 P95 与 P99 更差
 
 目标检查的机器可读数据保存在 [overview.json 的 targets/unavailable](../benchmarks/evidence/overview.json)。网络只计数器达到更低延迟，并不能替代完整网络目标；少进程场景满足 1 ms，也不能代替 5,000 或 10,000 进程场景。
 
+远端同样按真实内容检查目标，不能用本地 loopback 的低延迟代替 runner 的完整网络。下列延迟均为 μs；`disk` 只包含双方匹配的三个挂载容量。
+
+| 远端用例 | 目标 | zsys Mean | Median | P99 | 判定 |
+|---|---:|---:|---:|---:|---|
+| CPU：4 个在线逻辑 CPU＋聚合 | ≤5 | 21.665 | 21.580 | 28.492 | 均未达到 |
+| RAM／Swap | ≤3 | 10.015 | 9.808 | 18.284 | 均未达到 |
+| 完整网络 | ≤30 | 926.838 | 917.941 | 1,057.219 | 均未达到 |
+| 三个挂载容量 | ≤10 | 3.329 | 3.246 | 3.497 | 三项达到 |
+| 单进程核心 | ≤20 | 15.247 | 14.777 | 26.839 | Mean／Median 达到，P99 未达到 |
+| 全进程核心：168 个 | ≤1,000 | 2,382.474 | 2,373.688 | 2,494.714 | 均未达到 |
+| full：163 个进程及匹配的网络／挂载 | ≤1,000 | 3,714.052 | 3,645.864 | 4,224.713 | 均未达到 |
+
+远端已测 500／1,000 以及数量变化的更大规模也未达 1 ms。机器可读目标检查见 [远端 summary 的 targets](../benchmarks/evidence/github-89e6c6c-summary.json)，其中保留了实际进程范围。
+
 ## 8. 仍有的瓶颈与下一阶段计划
 
-**首先解决尾延迟的可解释性。** CPU 在实际采样间隔下的 P99 比 sysinfo 高，而连续密集读取的 zsys 延迟明显不同；共享调度、CPU 状态或内核生成统计的成本可能参与其中，但现有数据不能确定归因。下一步应在固定硬件和亲和性、记录负载的条件下增加重复和采样数量，结合系统调用／CPU profile 分解等待、读取和解析成本。验证标准需要同时看 Median、P95、P99 和最大值。
+**首先解决尾延迟的可解释性。** 本地 CPU 在实际采样间隔下的 P99 比 sysinfo 高，而连续密集读取的 zsys 延迟明显不同；共享调度、CPU 状态或内核生成统计的成本可能参与其中，但现有数据不能确定归因。下一步应在固定硬件和亲和性、记录负载的条件下增加重复和采样数量，结合系统调用／CPU profile 分解等待、读取和解析成本。验证标准需要同时看 Median、P95、P99 和最大值。
 
 **其次减少全表读取成本，同时保留 RSS 与身份正确性。** 默认进程路径要读取 `statm` 和 `stat`，这是公平 RSS 语义带来的真实工作，不能为达标退回字段较少的旧路径。应比较目录句柄策略、读取顺序、进程表布局和字段选择对 100–10,000 规模的影响；若提供更轻的可选范围，应在 API 与基准中明确标记。1 ms 全表目标在 500 个及以上尚有数量级差距。
 
@@ -235,7 +309,7 @@ CPU 中位延迟虽然为对照的约 1/1.77，但 **zsys 的 P95 与 P99 更差
 
 **继续优化按需详情并扩大故障覆盖。** 完整网络当前仍有每次分配，地址列表和 sysfs 元数据可以在不隐藏刷新语义的前提下研究存储复用。网络 namespace／接口快速替换、长时间 PID churn、权限变化、远程文件系统阻塞和设备热插拔需要更长压力测试。硬件则需按驱动单位与能力扩展，不能把有限 sysfs 支持称为全厂商 GPU 实现。
 
-**完成独立环境复测与发布闭环。** GitHub benchmark [43198501217](https://github.com/LIghtJUNction/zsys/actions/runs/43198501217) 在本报告记录时仍执行受控进程规模；其 CPU／内存／进程以及网络／full 的公平性与原始产物将单独审查。10,000 规模需要更充足资源，小时／天级 soak 需要保留实际执行日志。随后确认发布候选的完整 CI、crate 索引校验和、Tag 和 GitHub Release，才可关闭最终验收。
+**补充稳定大规模复测并完成发布闭环。** 独立 GitHub benchmark 已完成原始产物核验；下一步应使 5,000／10,000 规模在双方各自采样期间保持一致的实际数量，复测 `cold_basic` 的部分扫描失败，并保留小时／天级 soak 日志。发布已通过完整 CI 和包构建，当前需解决本次 registry 凭据认证拒绝；更改 secret 选择优先级后的第二次尝试仍被拒绝，下一步需更新有效凭据并重新核验同一候选的 crate 索引校验和、Tag 与 GitHub Release，才可关闭最终验收。
 
 Windows 与 macOS 应在 Linux 结果稳定之后分别使用原生接口实现，再为 FreeBSD、Android、iOS 制定可验证范围。它们的权限、计数单位和生命周期语义需要独立定义，不能用 Linux 的 `/proc` 数据结构冒充其他系统的实现。
 
@@ -243,19 +317,31 @@ Windows 与 macOS 应在 Linux 结果稳定之后分别使用原生接口实现�
 
 版本管理接受 `none`、`patch`、`minor`、`major`。两个 lockfile 只同步本 crate 版本，不通过 bump 顺带升级 benchmark 依赖；工作流对精确候选提交运行完整 CI，然后打包、发布并核对 registry 中的 checksum，最后创建一致的 `vVERSION` Tag 与 GitHub Release。重试准备阶段仅复用父提交和文件树都匹配的已推送 bump；已发布候选必须与包 checksum 一致。[release.yml](../.github/workflows/release.yml)、[version.py](../scripts/version.py)、[publish.py](../scripts/publish.py) 是执行来源。
 
-发布首选 secret **`CARGO_REGISTRY_TOKEN`**，兼容用户指定的 **`CARGO_REGISTY_TOKEN`**，后者作为 fallback；最终传给 Cargo 的环境变量使用 canonical 名称。Token 不进入仓库。配置和校验工作流已经存在，但是否有有效凭据、registry 是否接受本次上传以及 Release 是否生成，都必须由实际运行结果确认。
+按用户最后指定名称，[6a6f450670ea88353e48c72b7b9bf4a35eab30eb](https://github.com/LIghtJUNction/zsys/commit/6a6f450670ea88353e48c72b7b9bf4a35eab30eb) 已将 secret 选择改为优先 **`CARGO_REGISTY_TOKEN`**、fallback **`CARGO_REGISTRY_TOKEN`**；最终传给 Cargo 的环境变量仍为标准 `CARGO_REGISTRY_TOKEN`。日志只记录选中的 secret 名称，不打印值，Token 不进入仓库。
+
+首次 [Release 运行 43201351434](https://github.com/LIghtJUNction/zsys/actions/runs/43201351434) 的 prepare、11 个 validate job 以及 `cargo package` 均通过；[publish job 131126071886](https://github.com/LIghtJUNction/zsys/actions/runs/43201351434/job/131126071886) 在上传时收到 **`403 Forbidden: authentication failed`**。本次已有被选择的 token，但 registry 拒绝了它的认证，不能将原因写成未配置 token。
+
+第二次 [Release 运行 43201957205](https://github.com/LIghtJUNction/zsys/actions/runs/43201957205) 使用候选 SHA `6a6f450670ea88353e48c72b7b9bf4a35eab30eb`，其 11 个 validate job 和打包再次成功。[publish job 131128028423](https://github.com/LIghtJUNction/zsys/actions/runs/43201957205/job/131128028423) 明确记录 `Registry credential source: CARGO_REGISTY_TOKEN`，上传仍收到相同的 403 认证失败。两次均未完成发布，Tag 和 GitHub Release 步骤因上传失败而跳过。
+
+恢复发布需要在仓库 **Settings → Secrets and variables → Actions** 中更新有效的 **`CARGO_REGISTY_TOKEN`**，随后对 [运行 43201957205](https://github.com/LIghtJUNction/zsys/actions/runs/43201957205) 选择 **Re-run failed jobs**。这会保持同一候选 SHA 与 0.1.0 版本，复用已成功的验证任务；上传成功后继续检查 registry checksum、Tag 和 Release。恢复时无需为了认证错误 bump 版本，也不应把待发布状态改写为已成功。
+
+两次尝试的候选 SHA、成功验证数量、认证错误摘录和恢复入口也保存在 [release-status.json](release-status.json)。最后回读 crates.io sparse index 为 HTTP 404，GitHub Releases 列表为空；这些结果与发布步骤失败一致。
 
 | 位置／版本证据 | 链接与状态 |
 |---|---|
 | 仓库 | [LIghtJUNction/zsys](https://github.com/LIghtJUNction/zsys) |
-| 实施 PR | [PR #1](https://github.com/LIghtJUNction/zsys/pull/1)，本报告记录时为 open draft |
+| 实施 PR | [PR #1](https://github.com/LIghtJUNction/zsys/pull/1)，已于 2026-11-12 10:32:59 UTC 合并 |
+| 正式合并提交 | [4a137a3b6918c9307056dbba674345733be84acb](https://github.com/LIghtJUNction/zsys/commit/4a137a3b6918c9307056dbba674345733be84acb) |
 | RSS 语义与身份修正 | [d4b000ba3852e7c5afae8aac4ad26e3ba321111b](https://github.com/LIghtJUNction/zsys/commit/d4b000ba3852e7c5afae8aac4ad26e3ba321111b) |
 | 本地普通／规模基准来源 | [b469697a422d84b5e75cab2f2316f7f21d6fe036](https://github.com/LIghtJUNction/zsys/commit/b469697a422d84b5e75cab2f2316f7f21d6fe036) |
 | 本地真实间隔基准来源 | [e59722344c97e4365226837506a18f9817511795](https://github.com/LIghtJUNction/zsys/commit/e59722344c97e4365226837506a18f9817511795)，文档阶段提交，非网络原生代码与前述来源一致 |
 | 当前原生代码／网络复测来源 | [89e6c6c020869f3e6b37ea393bfc1040bd336d71](https://github.com/LIghtJUNction/zsys/commit/89e6c6c020869f3e6b37ea393bfc1040bd336d71) |
 | 开发原始证据保留提交 | [4dd4b537da3920a422b16c994030026b8f06dcc7](https://github.com/LIghtJUNction/zsys/commit/4dd4b537da3920a422b16c994030026b8f06dcc7) |
-| GitHub Release | [Releases](https://github.com/LIghtJUNction/zsys/releases)，**尚待实际发布确认** |
-| crates.io 候选目标 | [zsys 0.1.0](https://crates.io/crates/zsys/0.1.0)，**尚待 registry 校验确认** |
+| 第一次发布阻塞 | [43201351434 / publish](https://github.com/LIghtJUNction/zsys/actions/runs/43201351434/job/131126071886)：crates.io 403 认证拒绝 |
+| 第二次发布阻塞 | [43201957205 / publish](https://github.com/LIghtJUNction/zsys/actions/runs/43201957205/job/131128028423)：确认 `CARGO_REGISTY_TOKEN` 后仍被拒绝；候选 [6a6f450](https://github.com/LIghtJUNction/zsys/commit/6a6f450670ea88353e48c72b7b9bf4a35eab30eb) |
+| 远端证据保留提交 | [1ca7da4bb5001c9df50e92b9982374d61f1f53cf](https://github.com/LIghtJUNction/zsys/commit/1ca7da4bb5001c9df50e92b9982374d61f1f53cf) |
+| GitHub Release | [Releases](https://github.com/LIghtJUNction/zsys/releases)，**未完成；两次发布均在上传失败后跳过 Tag／Release 步骤** |
+| crates.io 候选目标 | [zsys 0.1.0](https://crates.io/crates/zsys/0.1.0)，**上传认证被拒，发布未完成** |
 
 后续提交或合并会改变仓库 HEAD，因此报告以各组记录的精确 SHA 和二进制哈希追溯测量，不把所有数据笼统归到一个最新版本名。原生代码修改后须判断哪些数据失效；本次网络身份修复已单独重跑网络组。
 
@@ -268,6 +354,8 @@ Windows 与 macOS 应在 Linux 结果稳定之后分别使用原生接口实现�
 - [final-table.csv](../benchmarks/evidence/final-table.csv)：完整 Mean／Median／P95／P99／Max／吞吐／分配／保留堆／VmHWM。
 - [final-raw.tar.gz](../benchmarks/evidence/final-raw.tar.gz)、[final-checksums.json](../benchmarks/evidence/final-checksums.json)：原始样本及产物校验和。
 - [development-raw.tar.gz](../benchmarks/evidence/development-raw.tar.gz)：早期基线与过程记录，旧 RSS 范围不用于最终公平结论。
+- [github-89e6c6c-summary.json](../benchmarks/evidence/github-89e6c6c-summary.json)、[table.csv](../benchmarks/evidence/github-89e6c6c-table.csv)：独立 GitHub 环境、全部统计、实际进程范围与失败重复。
+- [github-89e6c6c.zip](../benchmarks/evidence/github-89e6c6c.zip)、[checksums.json](../benchmarks/evidence/github-89e6c6c-checksums.json)：完整远端 artifact 与校验和。
 - [CI](https://github.com/LIghtJUNction/zsys/actions/workflows/ci.yml)、[Soak](https://github.com/LIghtJUNction/zsys/actions/workflows/soak.yml)、[Benchmark](https://github.com/LIghtJUNction/zsys/actions/workflows/benchmark.yml)：外部执行记录。
 
-后续验收应补全远端 benchmark、实际发布和更长 soak 的独立记录，保留已经暴露的失败与劣势。已测路径能提供技术收益，与所有目标都已达到是两个不同层次的结论；本版本的发布状态和能力边界按上述证据分别判断。
+后续验收应补全稳定大规模复测、实际发布和更长 soak 的独立记录，保留已经暴露的失败与劣势。已测路径能提供技术收益，与所有目标都已达到是两个不同层次的结论；本版本的发布状态和能力边界按上述证据分别判断。

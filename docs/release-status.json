@@ -1,0 +1,53 @@
+{
+  "checked_date_utc": "2026-11-12",
+  "version": "0.1.0",
+  "state": "blocked_registry_authentication",
+  "repository": "https://github.com/LIghtJUNction/zsys",
+  "pull_request": "https://github.com/LIghtJUNction/zsys/pull/1",
+  "merge_commit": "4a137a3b6918c9307056dbba674345733be84acb",
+  "latest_release_candidate": "6a6f450670ea88353e48c72b7b9bf4a35eab30eb",
+  "attempts": [
+    {
+      "run_id": 43201351434,
+      "job_id": 131126071886,
+      "candidate": "4a137a3b6918c9307056dbba674345733be84acb",
+      "validation_jobs_succeeded": 11,
+      "package_verified": true,
+      "publish_succeeded": false,
+      "registry_error": "403 Forbidden: authentication failed",
+      "release_step": "skipped",
+      "log_excerpt": [
+        "2026-11-12T10:34:50.0231821Z error: failed to publish zsys v0.1.0 to registry at https://crates.io",
+        "2026-11-12T10:34:50.0233396Z   the remote server responded with an error (status 403 Forbidden): authentication failed"
+      ]
+    },
+    {
+      "run_id": 43201957205,
+      "job_id": 131128028423,
+      "candidate": "6a6f450670ea88353e48c72b7b9bf4a35eab30eb",
+      "validation_jobs_succeeded": 11,
+      "package_verified": true,
+      "credential_source": "CARGO_REGISTY_TOKEN",
+      "publish_succeeded": false,
+      "registry_error": "403 Forbidden: authentication failed",
+      "release_step": "skipped",
+      "log_excerpt": [
+        "2026-11-12T10:38:37.4942466Z Registry credential source: CARGO_REGISTY_TOKEN",
+        "2026-11-12T10:38:38.7665604Z error: failed to publish zsys v0.1.0 to registry at https://crates.io",
+        "2026-11-12T10:38:38.7667103Z   the remote server responded with an error (status 403 Forbidden): authentication failed"
+      ]
+    }
+  ],
+  "registry_readback": {
+    "url": "https://index.crates.io/zs/ys/zsys",
+    "http_status": 404
+  },
+  "github_releases_readback": {
+    "count": 0
+  },
+  "recovery": {
+    "secret": "CARGO_REGISTY_TOKEN",
+    "settings_url": "https://github.com/LIghtJUNction/zsys/settings/secrets/actions",
+    "action": "Replace the secret with a valid crates.io publish token, then re-run the failed publish job in run 43201957205 to preserve the validated candidate."
+  }
+}
