@@ -5,6 +5,7 @@ mod io;
 mod network;
 mod processes;
 mod reader;
+mod system;
 pub use crate::parse;
 pub use cpu_memory::{CpuCollector, CpuSample, MemoryCollector, MemorySample};
 pub use disk::{DiskDevice, DiskIoCollector, Filesystem, Mount, Mounts};
@@ -15,3 +16,4 @@ pub use processes::{
     Availability, Detail, DetailOptions, Process, ProcessChanges, ProcessDetails, ProcessFailure, Processes,
 };
 pub use reader::{LinuxCollector, LinuxError, ProcessRecord};
+pub use system::System;
