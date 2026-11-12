@@ -14,10 +14,11 @@ jobs:
           ref: ${{ github.ref_name }}
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt
+          components: rustfmt, clippy
       - name: Commit formatting without changing semantics
         run: |
           cargo fmt --all
+          cargo fmt --manifest-path benchmarks/Cargo.toml
           if test -z "$(git status --porcelain)"; then exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -25,3 +26,5 @@ jobs:
           git commit -m 'style: apply rustfmt to development changes'
           git push origin HEAD:${{ github.ref_name }}
       - run: cargo test --locked --all-features
+      - run: cargo test --locked --no-default-features
+      - run: cargo clippy --locked --all-targets --all-features -- -D warnings
