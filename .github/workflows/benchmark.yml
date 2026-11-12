@@ -6,20 +6,23 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: benchmark-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   linux:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - name: Verify exact comparison dependency
         run: |
-          cargo build --release --manifest-path benchmarks/Cargo.toml
+          cargo build --locked --release --manifest-path benchmarks/Cargo.toml
           cargo tree --manifest-path benchmarks/Cargo.toml
           cargo tree --edges normal
       - name: Run paired measurements
-        run: python3 benchmarks/run.py --samples 1000
+        run: python3 benchmarks/run.py --samples 1000 --source-commit "${{ github.sha }}"
       - name: Retain raw evidence and resolved lockfile
         if: always()
         uses: actions/upload-artifact@v4

@@ -3,54 +3,112 @@ on:
   workflow_dispatch:
     inputs:
       bump:
-        description: Version bump
+        description: Version increment (none publishes the checked-in version)
         required: true
+        default: patch
         type: choice
-        options: [patch, minor, major]
+        options: [none, patch, minor, major]
+  push:
+    branches: [main]
+    paths: ['.release/request.json']
 permissions:
   contents: write
+concurrency:
+  group: zsys-release
+  cancel-in-progress: false
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  validate:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+  publish:
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
-      - name: Bump version
-        shell: bash
-        run: |
-          python3 - "${{ inputs.bump }}" <<'PY'
-          import pathlib, re, sys
-          bump = sys.argv[1]
-          p = pathlib.Path("Cargo.toml")
-          s = p.read_text()
-          m = re.search(r'(?m)^version = "(\d+)\.(\d+)\.(\d+)"$', s)
-          if not m: raise SystemExit("package version not found")
-          major, minor, patch = map(int, m.groups())
-          if bump == "major": major, minor, patch = major + 1, 0, 0
-          elif bump == "minor": minor, patch = minor + 1, 0
-          else: patch += 1
-          p.write_text(s[:m.start()] + f'version = "{major}.{minor}.{patch}"' + s[m.end():])
-          PY
-      - run: cargo fmt --all
-      - run: cargo test --all-features
-      - run: cargo check --no-default-features
-      - run: cargo check --all-features
-      - run: cargo package --locked
-      - name: Publish to crates.io
+        with:
+          components: rustfmt, clippy
+      - name: Verify authorization and branch lease
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: cargo publish --locked
-      - name: Commit and tag release
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTY_TOKEN || secrets.CARGO_REGISTRY_TOKEN }}
+          REQUESTED_BUMP: ${{ inputs.bump || 'none' }}
+        run: |
+          test -n "$CARGO_REGISTRY_TOKEN" || { echo '::error::Set CARGO_REGISTY_TOKEN or CARGO_REGISTRY_TOKEN'; exit 1; }
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$(git rev-parse HEAD)"
+          python3 - <<'PY'
+          import json, os, subprocess
+          mode = os.environ['REQUESTED_BUMP']
+          if os.environ['GITHUB_EVENT_NAME'] == 'push':
+              request = json.load(open('.release/request.json'))
+              expected = subprocess.check_output(['git','rev-parse','HEAD^'], text=True).strip()
+              if request.get('base') != expected:
+                  raise SystemExit('stale release request')
+              mode = request['bump']
+          if mode not in ('none','patch','minor','major'):
+              raise SystemExit('invalid bump')
+          with open(os.environ['GITHUB_ENV'],'a') as out:
+              out.write(f'BUMP={mode}\n')
+          PY
+      - name: Prepare consistent version and changelog
+        run: |
+          VERSION=$(python3 scripts/release.py bump "$BUMP")
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          python3 scripts/release.py changelog
+          python3 scripts/release.py check
+          cargo fmt --all -- --check
+          cargo test --locked --all-features
+          cargo test --locked --no-default-features
+          cargo clippy --locked --all-targets --all-features -- -D warnings
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Cargo.toml Cargo.lock benchmarks/Cargo.lock CHANGELOG.md
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(release): v$VERSION"
+            git push origin HEAD:main
+          fi
+          test -z "$(git status --porcelain)"
+      - name: Package the clean, committed source
+        run: |
+          cargo package --locked
+          sha256sum "target/package/zsys-$VERSION.crate" > target/package/crate.sha256
+      - name: Publish and verify registry archive
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTY_TOKEN || secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          STATUS=$(python3 scripts/registry.py check "$VERSION" "target/package/zsys-$VERSION.crate")
+          if [ "$STATUS" = publish ]; then
+            cargo publish --locked
+          fi
+          python3 scripts/registry.py verify "$VERSION" "target/package/zsys-$VERSION.crate"
+      - name: Create matching tag and GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add Cargo.toml Cargo.lock
-          git commit -m "chore(release): v$VERSION"
-          git tag "v$VERSION"
-          git push origin HEAD:main --tags
-          gh release create "v$VERSION" --generate-notes
+          TAG="v$VERSION"
+          if git rev-parse --verify "refs/tags/$TAG" >/dev/null 2>&1; then
+            test "$(git rev-parse "$TAG^{commit}")" = "$(git rev-parse HEAD)"
+          else
+            git tag -a "$TAG" -m "zsys $VERSION"
+            git push origin "refs/tags/$TAG"
+          fi
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --verify-tag --generate-notes --title "zsys $VERSION"
+          fi
+          gh release upload "$TAG" "target/package/zsys-$VERSION.crate" target/package/crate.sha256 --clobber
+      - name: Preserve package evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ github.run_id }}
+          path: |
+            target/package/*.crate
+            target/package/crate.sha256
+          if-no-files-found: ignore

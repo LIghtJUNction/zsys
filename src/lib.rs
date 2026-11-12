@@ -1,8 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-//! Low-overhead system information collection.
-//!
-//! Counter models and parsers work without `std` or an allocator.
-//! Linux collection is enabled by `std`; other targets currently expose models only.
+#![doc = include_str!("../README.md")]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
