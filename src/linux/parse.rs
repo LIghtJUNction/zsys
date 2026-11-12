@@ -35,16 +35,23 @@ pub fn parse_meminfo(input: &[u8]) -> Result<Memory, ParseError> {
         let value = fields(rest).next().map(number).transpose()?.unwrap_or(0).saturating_mul(1024);
         match key {
             b"MemTotal" => out.total_bytes = value,
-            b"MemAvailable" => out.available_bytes = value,
+            b"MemAvailable" => { out.available_bytes = value; has_available = true; },
             b"MemFree" => out.free_bytes = value,
             b"Buffers" => out.buffers_bytes = value,
             b"Cached" => out.cached_bytes = value,
+            b"SReclaimable" => reclaimable = value,
+            b"Shmem" => shared = value,
             b"SwapTotal" => out.swap_total_bytes = value,
             b"SwapFree" => out.swap_free_bytes = value,
             _ => {}
         }
     }
     if out.total_bytes == 0 { return Err(ParseError::MissingField); }
+    if !has_available {
+        out.available_bytes = out.free_bytes.saturating_add(out.buffers_bytes)
+            .saturating_add(out.cached_bytes).saturating_add(reclaimable)
+            .saturating_sub(shared).min(out.total_bytes);
+    }
     Ok(out)
 }
 
@@ -57,7 +64,8 @@ pub fn parse_process_stat(input: &[u8]) -> Result<(u32, ProcessState, ProcessCou
         b'R' => ProcessState::Running, b'S' => ProcessState::Sleeping,
         b'D' => ProcessState::DiskSleep, b'Z' => ProcessState::Zombie,
         b'T' => ProcessState::Stopped, b't' => ProcessState::Tracing,
-        b'X' | b'x' => ProcessState::Dead, _ => ProcessState::Unknown,
+        b'X' | b'x' => ProcessState::Dead, b'I' => ProcessState::Idle,
+        _ => ProcessState::Unknown,
     };
     let mut it = fields(input.get(close + 2..).ok_or(ParseError::MissingField)?);
     it.next().ok_or(ParseError::MissingField)?;
