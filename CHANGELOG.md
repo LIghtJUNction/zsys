@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1
+
+- Add the opt-in, allocation-free `dylib` system interface for Linux, macOS and Windows.
+- Keep loaded images pinned when handles are dropped; require explicit unsafe close after native work has stopped.
+- Preserve UTF-16 Windows paths, native reference counts and explicit unsupported-target errors.
+- Exercise real independently compiled libraries, missing symbols, repeated close and mapping lifetimes in the native CI matrix.
+
 ## 0.1.0
 
 - Portable `no_std` CPU, memory, process, disk and network models, parsers, delta calculations, and caller-driven cadence.

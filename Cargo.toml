@@ -1,6 +1,6 @@
 [package]
 name = "zsys"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.95"
 description = "A low-overhead, incremental system information engine"
@@ -15,6 +15,7 @@ include = ["src/**", "examples/**", "tests/**", "README.md", "BENCHMARKS.md", "C
 default = ["std"]
 alloc = []
 std = ["alloc"]
+dylib = []
 
 [lib]
 path = "src/lib.rs"

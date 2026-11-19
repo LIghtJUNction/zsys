@@ -2,7 +2,7 @@
 
 A composable system-information engine for Rust, with **zero third-party runtime dependencies**. Collect only the information you need, retain sampling state, and read snapshots through borrowed views.
 
-The current native backend is **Linux**. CPU, memory, processes, filesystems, block I/O, networks, and optional sysfs hardware information are implemented. Windows, macOS, and other targets currently expose the portable counter models and parsers; their native collectors remain future work. See [platform support](docs/platforms.md).
+The native system-information backend is **Linux**. CPU, memory, processes, filesystems, block I/O, networks, and optional sysfs hardware information are implemented. Windows, macOS, and other targets currently expose the portable counter models and parsers; their native collectors remain future work. See [platform support](docs/platforms.md).
 
 ## Run it
 
@@ -13,7 +13,7 @@ cargo run --release --example basic
 cargo run --release --example cadence
 ```
 
-The intended initial registry version is `0.1.0`:
+The current development version is `0.1.1`; registry publication is confirmed by its version tag and release:
 
 ```toml
 [dependencies]
@@ -106,8 +106,21 @@ zsys = { version = "0.1", default-features = false }
 | No features | `no_std` counter types, delta calculations, procfs parsers, `Sample`, `SystemSnapshot`, and `Cadence`; no allocator required |
 | `alloc` | `no_std` configuration with the allocation capability enabled; it does not enable OS access or add separate collectors |
 | `std` — default | Enables `alloc` and, on Linux, native collectors |
+| `dylib` | Allocation-free Linux/macOS/Windows native library loading; independent of `std` and `alloc` |
 
 Core APIs include `cpu::CpuTimes`, `memory::Memory`, `process::{ProcessId, ProcessCounters, ProcessState}`, `disk` and `network` counter/parser types, and `sampling::Cadence`. Parsing operates on caller-provided bytes; the core does not open files. Generate the complete API reference with `cargo doc --no-deps --all-features --open`.
+
+## Shared native library loading
+
+The opt-in `dylib` feature provides the system boundary used by Project Z plugin runtimes. It opens trusted libraries, resolves raw symbol addresses and explicitly closes references without requiring `std`, a Rust allocator or another crate. The wrapper does not allocate Rust memory; the OS loader and native initializers can allocate their own memory.
+
+```toml
+zsys = { version = "0.1.1", default-features = false, features = ["dylib"] }
+```
+
+`dylib::Library` keeps the native mapping loaded when its Rust handle is dropped. Its unsafe `close` operation is only valid after all code, data, callbacks and background work requiring that reference have stopped. The narrow path API accepts `CStr`; Windows also provides validated UTF-16 `open_wide`. Unsupported targets and static musl builds return `dylib::Error::Unsupported`. This capability does not add Windows/macOS telemetry collectors.
+
+The native CI jobs compile a separate shared library and exercise symbol calls, duplicate image references, explicit close and retained mappings in a child process. Current execution evidence belongs to the corresponding CI run.
 
 ## Measure before making a claim
 

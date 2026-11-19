@@ -18,6 +18,14 @@ The portable core and native collection backends have different support boundari
 
 These rows describe source capabilities and the configured validation scope. Inspect the [CI runs](https://github.com/LIghtJUNction/zsys/actions/workflows/ci.yml) and [acceptance record](progress.md) for execution results on the commit you use.
 
+## Shared dynamic-library interface
+
+The independent `dylib` feature implements native loading on Linux, macOS and Windows with `no_std` and no allocator. Unix uses eager, local symbol loading. Windows uses the platform default DLL search directories and preserves UTF-16 paths through `open_wide`. Statically linked musl and other unsupported targets return an explicit unsupported error.
+
+A handle owns one OS loader reference and is thread-local. Dropping it pins the mapping; unloading is an explicit unsafe operation whose caller must stop every dependent object, symbol, callback and native task first. This is the system primitive used by zplugin; it does not implement plugin ABI validation or platform telemetry collection.
+
+The native CI matrix exercises independently built dynamic libraries. The bare-metal/WASM jobs also compile the feature's unsupported-target path. A configured CI job is not a recorded native runtime result; consult its completed run for the tested commit.
+
 ## Feature and compiler requirements
 
 The MSRV is Rust **1.95**, edition **2024**. With default features disabled, the crate is `no_std` and its counter types and parsers do not require a global allocator. The `alloc` feature enables that capability without enabling OS access; it currently adds no separate allocation-backed public collection API. Default `std` enables Linux collection only when `target_os = "linux"`.

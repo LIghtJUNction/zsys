@@ -2,7 +2,8 @@
 //! Low-overhead system information collection.
 //!
 //! Counter models and parsers work without `std` or an allocator.
-//! Linux collection is enabled by `std`; other targets currently expose models only.
+//! Linux collection is enabled by `std`; the optional `dylib` feature adds
+//! shared Linux/macOS/Windows native loading without `std` or an allocator.
 //!
 //! ```
 //! use zsys::cpu::CpuTimes;
@@ -31,6 +32,8 @@ extern crate alloc;
 
 pub mod cpu;
 pub mod disk;
+#[cfg(feature = "dylib")]
+pub mod dylib;
 pub mod memory;
 pub mod network;
 #[path = "linux/parse.rs"]
