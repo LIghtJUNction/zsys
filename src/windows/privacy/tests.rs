@@ -328,9 +328,22 @@ mod directory_children {
         }
     }
 
-    // Validate inherited children's effective grants without weakening the
-    // production checker, which intentionally requires a protected, explicit ACL.
-    fn assert_private_grants(file: &File, flags: u8) {
+    #[derive(Debug)]
+    struct StoredAllow {
+        flags: u8,
+        mask: u32,
+        current_user: bool,
+        system: bool,
+    }
+
+    struct StoredDacl {
+        protected: bool,
+        entries: Vec<StoredAllow>,
+    }
+
+    // Read the ACL actually stored by Windows, including native normalization.
+    // Test expectations must describe these entries, not only the input SDDL.
+    fn stored_dacl(file: &File) -> StoredDacl {
         #[repr(C)]
         struct AclSize {
             count: u32,
@@ -357,35 +370,49 @@ mod directory_children {
             );
             assert!(!descriptor.is_null() && !acl.is_null());
             let _descriptor = Local(descriptor);
+            let mut control = 0;
+            let mut revision = 0;
+            assert_ne!(GetSecurityDescriptorControl(descriptor, &mut control, &mut revision), 0);
             let mut size = AclSize { count: 0, used: 0, free: 0 };
             assert_ne!(
                 GetAclInformation(acl, (&mut size as *mut AclSize).cast(), std::mem::size_of::<AclSize>() as u32, 2,),
                 0
             );
-            assert_eq!(size.count, 2);
             let mut system = [0usize; 16];
             let mut system_size = std::mem::size_of_val(&system) as u32;
             assert_ne!(CreateWellKnownSid(22, ptr::null(), system.as_mut_ptr().cast(), &mut system_size), 0);
             let user_sid = *(user.as_ptr().cast::<*mut c_void>());
-            let mut found_user = false;
-            let mut found_system = false;
+            let mut entries = Vec::new();
             for index in 0..size.count {
                 let mut ace = ptr::null_mut();
                 assert_ne!(GetAce(acl, index, &mut ace), 0);
                 assert!(!ace.is_null());
                 let bytes = ace.cast::<u8>();
                 assert_eq!(*bytes, 0); // ACCESS_ALLOWED_ACE_TYPE
-                assert_eq!(*bytes.add(1), flags);
-                assert_eq!(ptr::read_unaligned(bytes.add(4).cast::<u32>()), 0x001f_01ff);
                 let sid = bytes.add(8).cast::<c_void>();
-                let is_user = EqualSid(sid, user_sid) != 0;
-                let is_system = EqualSid(sid, system.as_ptr().cast()) != 0;
-                assert!(is_user || is_system);
-                found_user |= is_user;
-                found_system |= is_system;
+                entries.push(StoredAllow {
+                    flags: *bytes.add(1),
+                    mask: ptr::read_unaligned(bytes.add(4).cast::<u32>()),
+                    current_user: EqualSid(sid, user_sid) != 0,
+                    system: EqualSid(sid, system.as_ptr().cast()) != 0,
+                });
             }
-            assert!(found_user && found_system);
+            StoredDacl { protected: control & 0x1000 != 0, entries }
         }
+    }
+
+    // Validate inherited children's effective grants without weakening the
+    // production checker, which intentionally requires a protected, explicit ACL.
+    fn assert_private_grants(file: &File, flags: u8) {
+        let acl = stored_dacl(file);
+        assert_eq!(acl.entries.len(), 2);
+        for entry in &acl.entries {
+            assert_eq!(entry.flags, flags);
+            assert_eq!(entry.mask, 0x001f_01ff);
+            assert!(entry.current_user || entry.system);
+        }
+        assert!(acl.entries.iter().any(|entry| entry.current_user));
+        assert!(acl.entries.iter().any(|entry| entry.system));
     }
 
     #[test]
@@ -484,7 +511,28 @@ mod directory_children {
         for (user_flags, system_flags) in [("", "OICI"), ("OICI", "")] {
             for rights in ["FR", "FW", "0x00000000"] {
                 set_acl_entries(&directory.file, user_flags, system_flags, "SY", rights);
-                check_private(&directory.file).unwrap();
+                let acl = stored_dacl(&directory.file);
+                assert!(acl.protected);
+                if rights == "0x00000000" {
+                    // Native Windows removes zero-mask ACEs during assignment.
+                    // The resulting empty DACL must still be rejected. See the
+                    // six-case Windows readback in Project Z run 45243227880.
+                    assert!(acl.entries.is_empty(), "zero-mask ACL was not normalized: {:?}", acl.entries);
+                    assert_eq!(check_private(&directory.file), Err(Error::InspectAccess));
+                } else {
+                    assert_eq!(acl.entries.len(), 2);
+                    let mut flags = acl.entries.iter().map(|entry| entry.flags).collect::<Vec<_>>();
+                    flags.sort_unstable();
+                    assert_eq!(flags, [0, 3]);
+                    for entry in &acl.entries {
+                        assert!(entry.current_user || entry.system);
+                        assert_ne!(entry.mask, 0);
+                        assert_ne!(entry.mask, 0x001f_01ff);
+                    }
+                    assert!(acl.entries.iter().any(|entry| entry.current_user));
+                    assert!(acl.entries.iter().any(|entry| entry.system));
+                    check_private(&directory.file).unwrap();
+                }
             }
         }
     }
