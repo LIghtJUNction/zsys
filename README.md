@@ -4,6 +4,11 @@ A composable system-information engine for Rust, with **zero third-party runtime
 
 The native system-information backend is **Linux**. CPU, memory, processes, filesystems, block I/O, networks, and optional sysfs hardware information are implemented. Windows, macOS, and other targets currently expose the portable counter models and parsers; their native collectors remain future work. See [platform support](docs/platforms.md).
 
+On Windows, the default `std` feature also provides handle-based private file
+inspection and protection through `windows::privacy`. See the [Windows security
+contract](docs/platforms.md#windows-private-file-security) for the separate
+read-only, DACL-only and exclusive-creation operations.
+
 ## Run it
 
 From a checkout, with Rust **1.95 or newer**:
@@ -105,7 +110,7 @@ zsys = { version = "0.1", default-features = false }
 |---|---|
 | No features | `no_std` counter types, delta calculations, procfs parsers, `Sample`, `SystemSnapshot`, and `Cadence`; no allocator required |
 | `alloc` | `no_std` configuration with the allocation capability enabled; it does not enable OS access or add separate collectors |
-| `std` — default | Enables `alloc` and, on Linux, native collectors |
+| `std` — default | Enables `alloc`, Linux native collectors and Windows private file security on their respective platforms |
 | `dylib` | Allocation-free Linux/macOS/Windows native library loading; independent of `std` and `alloc` |
 
 Core APIs include `cpu::CpuTimes`, `memory::Memory`, `process::{ProcessId, ProcessCounters, ProcessState}`, `disk` and `network` counter/parser types, and `sampling::Cadence`. Parsing operates on caller-provided bytes; the core does not open files. Generate the complete API reference with `cargo doc --no-deps --all-features --open`.
@@ -124,7 +129,7 @@ The native CI jobs compile a separate shared library and exercise symbol calls, 
 
 ## Measure before making a claim
 
-[**BENCHMARKS.md**](BENCHMARKS.md) contains the comparison scope, measurements, raw-data locations, and limitations. The independent [benchmark package](benchmarks/) pins **sysinfo `=0.40.3`** as a benchmark dependency. The library itself does not depend on sysinfo, libc, Rayon, or a procfs wrapper crate.
+[**BENCHMARKS.md**](BENCHMARKS.md) contains the comparison scope, measurements, raw-data locations, and limitations. The independent [benchmark package](benchmarks/) pins **sysinfo `=0.40.4`** as a benchmark dependency. The published measurements in BENCHMARKS.md retain their original sysinfo 0.40.3 baseline; updating this pin does not refresh those measurements. The library itself does not depend on sysinfo, libc, Rayon, or a procfs wrapper crate.
 
 ```sh
 cargo build --locked --release --manifest-path benchmarks/Cargo.toml

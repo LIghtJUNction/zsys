@@ -8,7 +8,7 @@ publish = false
 
 [dependencies]
 zsys = { path = ".." }
-sysinfo = { version = "=0.40.3", default-features = false, features = ["system", "network", "disk"] }
+sysinfo = { version = "=0.40.4", default-features = false, features = ["system", "network", "disk"] }
 
 [profile.release]
 lto = "thin"

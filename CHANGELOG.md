@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Share Windows handle-based private file inspection and protection through `windows::privacy`, under the existing `std` feature and without new dependencies.
+- Preserve separate read-only checks, DACL-only reprotection and owner initialization for exclusively created objects. Make directory inheritance an explicit caller policy.
+- Add native Windows contract tests for both consumer policies, read-only rejection and inherited children. Validate SIDs before querying their length.
+
 ## 0.1.1
 
 - Add the opt-in, allocation-free `dylib` system interface for Linux, macOS and Windows.

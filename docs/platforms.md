@@ -26,9 +26,56 @@ A handle owns one OS loader reference and is thread-local. Dropping it pins the 
 
 The native CI matrix exercises independently built dynamic libraries. The bare-metal/WASM jobs also compile the feature's unsupported-target path. A configured CI job is not a recorded native runtime result; consult its completed run for the tested commit.
 
+## Windows private file security
+
+With `std` on Windows, `windows::privacy` operates on an existing `std::fs::File`
+handle. It does not reopen a path. Callers continue to decide whether a handle
+represents an allowed regular file or directory, including reparse-point and
+hard-link checks.
+
+| Operation | Behavior |
+| --- | --- |
+| `check_private` | Read the owner and DACL without changing either or writing payload data. |
+| `protect` | Replace only the DACL; existing private objects can be reprotected without requesting `WRITE_OWNER`. |
+| `protect_created` | Set the current account as owner, install the DACL, then inspect it. The caller must have just created the object exclusively and must not have written its payload. |
+
+Inspection requires the current process token's user SID as owner and a
+protected DACL containing one or two ordinary allow entries. Only the current
+account and SYSTEM are accepted, and both roles must be represented; when the
+current account is SYSTEM, one entry can satisfy both roles. Each directory
+entry independently permits either no inheritance flags or both OI/CI flags.
+Regular-file entries must have no inheritance flags. The checker preserves the
+original consumers' policy of not requiring a particular access mask.
+
+`DirectoryInheritance::ObjectOnly` installs non-inheriting grants.
+`FilesAndDirectories` installs OI/CI grants on directories and non-inheriting
+grants on regular files. This distinction matters when reapplying a directory
+DACL: Windows can propagate inheritable entries to existing children through
+[SetSecurityInfo](https://learn.microsoft.com/en-us/windows/win32/api/aclapi/nf-aclapi-setsecurityinfo).
+
+The implementation bounds token storage to 65,536 bytes and SID text to 255
+UTF-16 code units. Owned token handles are closed and security-descriptor buffers
+are released with `LocalFree`, as required by
+[GetSecurityInfo](https://learn.microsoft.com/en-us/windows/win32/api/aclapi/nf-aclapi-getsecurityinfo).
+SID validation precedes length inspection, following the
+[GetLengthSid contract](https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-getlengthsid).
+Typed errors retain the existing consumer-facing error text.
+
+Run the actual permission tests on Windows:
+
+```powershell
+cargo test --locked --lib windows::privacy::tests
+```
+
+The tests cover read-only rejection without ACL or payload repair, explicit
+creation, directory reprotection through a handle without `WRITE_OWNER`,
+inherited children, per-entry flag combinations and preserved access-mask
+semantics. Cross-target `cargo check --target x86_64-pc-windows-msvc --tests`
+checks compilation only; it does not execute these Windows API paths.
+
 ## Feature and compiler requirements
 
-The MSRV is Rust **1.95**, edition **2024**. With default features disabled, the crate is `no_std` and its counter types and parsers do not require a global allocator. The `alloc` feature enables that capability without enabling OS access; it currently adds no separate allocation-backed public collection API. Default `std` enables Linux collection only when `target_os = "linux"`.
+The MSRV is Rust **1.95**, edition **2024**. With default features disabled, the crate is `no_std` and its counter types and parsers do not require a global allocator. The `alloc` feature enables that capability without enabling OS access; it currently adds no separate allocation-backed public collection API. Default `std` enables Linux collection when `target_os = "linux"` and the private file security API on Windows.
 
 ```sh
 cargo test --locked --no-default-features
